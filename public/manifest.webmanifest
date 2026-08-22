@@ -1,0 +1,22 @@
+{
+  "name": "Recipes — Vegetarian Meals + Macros",
+  "short_name": "Recipes",
+  "description": "Turn vegetarian products into macro-aware meals and practical shopping lists.",
+  "id": "/recipes/",
+  "start_url": "/recipes/",
+  "scope": "/recipes/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0e2119",
+  "theme_color": "#173a2b",
+  "categories": ["food", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/recipes/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

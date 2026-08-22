@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#10271d"/>
+      <stop offset="1" stop-color="#245a41"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop stop-color="#f7d77b" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#f7d77b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1010" cy="92" r="390" fill="url(#glow)"/>
+  <circle cx="941" cy="318" r="175" fill="#f7d77b"/>
+  <path d="M941 176c-66 59-90 133-72 218M941 176c66 59 90 133 72 218M852 304h178" fill="none" stroke="#173a2b" stroke-width="28" stroke-linecap="round"/>
+  <path d="M951 154c12-54 49-86 102-91-8 54-43 86-102 91Z" fill="#72c896"/>
+  <text x="96" y="244" fill="#f9f2df" font-family="Avenir Next,Arial,sans-serif" font-size="92" font-weight="800" letter-spacing="-4">Recipes</text>
+  <text x="98" y="318" fill="#d9e9de" font-family="Avenir Next,Arial,sans-serif" font-size="34">Products → meals → macros.</text>
+  <text x="98" y="386" fill="#a7c9b5" font-family="Avenir Next,Arial,sans-serif" font-size="25">Vegetarian by design. Eggs allowed.</text>
+</svg>

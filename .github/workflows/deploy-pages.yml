@@ -1,0 +1,109 @@
+name: Deploy Recipes to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Install Firebase CLI for rule tests
+        run: npm install --global firebase-tools@15.14.0
+
+      - name: Set up Java for Firestore emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Test Firestore security rules
+        run: npm run test:rules
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        env:
+          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ vars.VITE_FIREBASE_APPCHECK_SITE_KEY }}
+        run: |
+          test -n "$VITE_FIREBASE_APPCHECK_SITE_KEY"
+          npm run build
+          grep -R -Fq "$VITE_FIREBASE_APPCHECK_SITE_KEY" dist/assets
+
+      - name: Validate Pages artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -f dist/favicon.svg
+          test -f dist/app-icon.svg
+          test -f dist/social-card.svg
+          test -f dist/manifest.webmanifest
+          test -f dist/sw.js
+          test -d dist/assets
+          find dist/assets -type f -name '*.js' -print -quit | grep -q .
+          find dist/assets -type f -name '*.css' -print -quit | grep -q .
+          grep -Fq 'src="/recipes/assets/' dist/index.html
+          grep -Fq 'href="/recipes/assets/' dist/index.html
+          grep -Fq 'href="/recipes/manifest.webmanifest"' dist/index.html
+          grep -Fq 'href="/recipes/favicon.svg"' dist/index.html
+          grep -Fq 'href="https://harsh.bet/recipes/"' dist/index.html
+          grep -Fq 'self.registration.scope' dist/sw.js
+          grep -R -Fq 'sw.js' dist/assets
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const manifest = JSON.parse(readFileSync('dist/manifest.webmanifest', 'utf8'));
+          if (manifest.id !== '/recipes/' || manifest.start_url !== '/recipes/' || manifest.scope !== '/recipes/') {
+            throw new Error('Recipes manifest paths must stay rooted at /recipes/.');
+          }
+          if (!(manifest.icons ?? []).some((icon) => icon.src === '/recipes/app-icon.svg')) {
+            throw new Error('Recipes manifest is missing its app icon.');
+          }
+          NODE
+          test ! -e CNAME
+          test ! -e dist/CNAME
+          touch dist/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
