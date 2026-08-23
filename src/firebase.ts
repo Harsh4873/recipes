@@ -1,4 +1,3 @@
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { getApps, initializeApp } from 'firebase/app';
 import {
   GoogleAuthProvider,
@@ -30,17 +29,6 @@ adoptSharedAuthSession(firebaseConfig.apiKey, LEGACY_APP_NAMES);
 
 export const firebaseApp = getApps().find((app) => app.name === OWNER_VAULT_APP_NAME)
   ?? initializeApp(firebaseConfig, OWNER_VAULT_APP_NAME);
-
-// App Check is intentionally opt-in until the matching public Enterprise site
-// key is configured. No debug token is installed, especially in production.
-const appCheckSiteKey = (import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY ?? '').trim();
-export const firebaseAppCheckConfigured = Boolean(appCheckSiteKey);
-export const firebaseAppCheck = firebaseAppCheckConfigured && typeof window !== 'undefined'
-  ? initializeAppCheck(firebaseApp, {
-      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
-      isTokenAutoRefreshEnabled: true,
-    })
-  : null;
 
 export const firebaseAuth = getAuth(firebaseApp);
 export const authPersistenceReady = setPersistence(firebaseAuth, browserLocalPersistence);

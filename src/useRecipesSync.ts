@@ -596,7 +596,7 @@ export function useRecipesSync(store: RecipesStore): RecipesSync {
           setStatus(online() ? 'signed-out' : 'offline');
           setMessage(online()
             ? 'Sign in with Google to sync this private workspace.'
-            : 'You are offline. Local recipes and pantry data still work.');
+            : 'You are offline. Saved recipes and your grocery list still work.');
           return;
         }
         setStatus(online() ? 'syncing' : 'offline');

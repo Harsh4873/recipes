@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'recipes-shell-';
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

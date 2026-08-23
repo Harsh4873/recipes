@@ -42,6 +42,12 @@ describe('Recipes state validation', () => {
     expect(parsed.recipes[0].ingredients[0].snapshot?.provenance.providerName).toBeTruthy();
   });
 
+  it('normalizes retired recipe origins during import', () => {
+    const legacyRecipe = JSON.parse(JSON.stringify(STARTER_RECIPES[0]));
+    legacyRecipe.origin = 'retired-origin';
+    expect(parseRecipe(legacyRecipe).origin).toBe('manual');
+  });
+
   it('rejects unsupported versions, duplicate ids, and an invalid vegetarian invariant', () => {
     const wrongVersion = { ...populatedState(), version: 2 };
     expect(() => parseRecipesState(wrongVersion)).toThrow(/version/i);

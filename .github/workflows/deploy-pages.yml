@@ -58,12 +58,7 @@ jobs:
         run: npm run typecheck
 
       - name: Build
-        env:
-          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ vars.VITE_FIREBASE_APPCHECK_SITE_KEY }}
-        run: |
-          test -n "$VITE_FIREBASE_APPCHECK_SITE_KEY"
-          npm run build
-          grep -R -Fq "$VITE_FIREBASE_APPCHECK_SITE_KEY" dist/assets
+        run: npm run build
 
       - name: Validate Pages artifact
         shell: bash

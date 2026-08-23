@@ -304,9 +304,10 @@ function parseIngredient(value: unknown, field: string): RecipeIngredient {
 
 export function parseRecipe(value: unknown, field = 'recipe'): Recipe {
   const raw = record(value, field);
-  const origins: Recipe['origin'][] = ['starter', 'smart', 'firebase-ai', 'manual'];
-  const origin = text(raw.origin, `${field}.origin`) as Recipe['origin'];
-  if (!origins.includes(origin)) throw new Error(`${field}.origin is unsupported.`);
+  const storedOrigin = text(raw.origin, `${field}.origin`);
+  // Older saved recipes may carry a retired generator origin. They remain
+  // importable as manual recipes, but that implementation detail is not kept.
+  const origin: Recipe['origin'] = storedOrigin === 'starter' ? 'starter' : 'manual';
   if (raw.dietStatus !== 'allowed') throw new Error(`${field} is not an allowed vegetarian recipe.`);
   if (!Array.isArray(raw.ingredients) || !Array.isArray(raw.steps)) {
     throw new Error(`${field} must include ingredient and step lists.`);

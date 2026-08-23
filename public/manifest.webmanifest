@@ -1,7 +1,7 @@
 {
-  "name": "Recipes — Vegetarian Meals + Macros",
+  "name": "Recipes — Substantial Vegetarian Meals",
   "short_name": "Recipes",
-  "description": "Turn vegetarian products into macro-aware meals and practical shopping lists.",
+  "description": "Browse 100 substantial vegetarian lunches and dinners with macros and grocery guidance.",
   "id": "/recipes/",
   "start_url": "/recipes/",
   "scope": "/recipes/",

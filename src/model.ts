@@ -5,7 +5,7 @@ export type DietStatus = 'allowed' | 'review' | 'blocked';
 export type DietEvidence = 'curated' | 'provider-label' | 'ingredient-check' | 'owner-approved' | 'unknown';
 export type ProductSourceKind = 'starter' | 'open-food-facts' | 'usda' | 'manual';
 export type NutritionQuality = 'verified' | 'complete' | 'partial' | 'missing';
-export type RecipeOrigin = 'starter' | 'smart' | 'firebase-ai' | 'manual';
+export type RecipeOrigin = 'starter' | 'manual';
 
 export interface Nutrition {
   readonly calories: number;
@@ -159,9 +159,9 @@ export function createEmptyState(
     version: RECIPES_STATE_VERSION,
     settings: {
       theme: 'system',
-      calorieTarget: 550,
-      proteinTargetG: 30,
-      maxCookMinutes: 35,
+      calorieTarget: 900,
+      proteinTargetG: 40,
+      maxCookMinutes: 60,
       eggsAllowed: true,
       updatedAt: now,
     },
