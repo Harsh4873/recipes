@@ -677,19 +677,13 @@ const MEAL_SPECS: readonly MealSpec[] = [
   M('crispy-tofu-chickpea-pasta', 'Crispy tofu chickpea pasta marinara', 'Italian-inspired', 'Tofu', 'pasta', 10, 20, [I('tofu-firm', 250), I('chickpea-pasta', 112), I('tomato-sauce', 240), I('broccoli', 180), I('mozzarella', 40), I('olive-oil', 10), I('garlic', 6)]),
   M('red-lentil-coconut-curry', 'Red lentil coconut freezer curry', 'Indian', 'Red lentils', 'curry', 8, 22, [I('red-lentils', 360), I('basmati-rice', 300), I('coconut-milk', 150), I('spinach', 160), I('tomato-sauce', 160), I('onion', 80), I('garlic', 6), I('ginger', 10)]),
 
-  // Scout easy high-protein weeknight plates (2026-09-24)
-  M('scout-high-protein-omelet-plate', 'High-protein omelet pita plate', 'Everyday', 'Eggs', 'skillet', 10, 16, [I('eggs', 250), I('cottage-cheese', 220), I('greek-yogurt', 120), I('spinach', 120), I('mushrooms', 140), I('pita', 120), I('olive-oil', 10)]),
+  // Scout easy high-protein weeknight plates (2026-09-24) — dairy/legume/tofu set (egg plates dropped)
   M('scout-greek-cottage-bowl', 'Greek cottage cheese protein bowl', 'Greek-inspired', 'Cottage cheese', 'bowl', 10, 12, [I('cottage-cheese', 280), I('greek-yogurt', 150), I('chickpeas', 220), I('tomato', 150), I('bell-pepper', 120), I('pita', 120), I('olive-oil', 10)]),
-  M('scout-cottage-scramble-plate', 'Cottage cheese scrambled eggs plate', 'Everyday', 'Eggs', 'skillet', 8, 14, [I('eggs', 250), I('cottage-cheese', 240), I('spinach', 140), I('tomato', 120), I('pita', 120), I('olive-oil', 10)]),
   M('scout-savory-cottage-bowl', 'Savory cottage chickpea pita bowl', 'Mediterranean', 'Cottage cheese', 'bowl', 10, 12, [I('cottage-cheese', 280), I('chickpeas', 240), I('tomato', 150), I('spinach', 120), I('pita', 120), I('olive-oil', 10)]),
-  M('scout-egg-bites-plate', 'Cheddar spinach egg bites plate', 'American comfort', 'Eggs', 'bake', 12, 22, [I('eggs', 250), I('cottage-cheese', 200), I('spinach', 140), I('cheddar', 55), I('potato', 280), I('olive-oil', 10)]),
   M('scout-curried-chickpea-spinach-rice', 'Curried chickpeas with spinach rice', 'Indian', 'Chickpeas', 'curry', 10, 22, [I('chickpeas', 300), I('spinach', 160), I('tomato-sauce', 200), I('basmati-rice', 280), I('onion', 100), I('olive-oil', 14), I('garlic', 9), I('ginger', 10)]),
   M('scout-southwest-tofu-scramble', 'Southwest tofu scramble wraps', 'Tex-Mex', 'Tofu', 'wrap', 10, 16, [I('tofu-firm', 260), I('eggs', 150), I('salsa', 140), I('black-beans', 220), I('whole-wheat-tortilla', 112), I('olive-oil', 7)]),
   M('scout-tuscan-white-bean-pasta', 'Tuscan white bean spinach pasta', 'Italian-inspired', 'Pinto beans', 'pasta', 10, 20, [I('pasta', 320), I('pinto-beans', 260), I('spinach', 160), I('tomato-sauce', 220), I('mozzarella', 70), I('olive-oil', 10), I('garlic', 9)]),
-  M('scout-mushroom-spinach-scramble', 'Mushroom spinach scrambled eggs plate', 'Everyday', 'Eggs', 'skillet', 8, 14, [I('eggs', 250), I('mushrooms', 180), I('spinach', 140), I('cottage-cheese', 220), I('pita', 120), I('olive-oil', 10)]),
-  M('scout-shakshuka-chickpea', 'Chickpea shakshuka pita plate', 'Middle Eastern-inspired', 'Eggs', 'stew', 10, 22, [I('eggs', 200), I('tomato-sauce', 260), I('chickpeas', 240), I('onion', 100), I('spinach', 120), I('pita', 120), I('olive-oil', 14)]),
   M('scout-simple-masoor-dal-rice', 'Simple masoor dal rice plate', 'Indian', 'Red lentils', 'stew', 8, 24, [I('red-lentils', 320), I('basmati-rice', 280), I('spinach', 140), I('tomato', 150), I('greek-yogurt', 160), I('onion', 100), I('olive-oil', 14), I('garlic', 6)]),
-  M('scout-egg-bhurji-plate', 'Egg bhurji rice plate', 'Indian', 'Eggs', 'skillet', 10, 16, [I('eggs', 250), I('onion', 120), I('tomato', 150), I('spinach', 120), I('basmati-rice', 280), I('greek-yogurt', 140), I('olive-oil', 10)]),
 ];
 
 export const STARTER_RECIPES: readonly Recipe[] = Object.freeze(MEAL_SPECS.map(recipe));
