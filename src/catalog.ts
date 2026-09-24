@@ -684,6 +684,16 @@ const MEAL_SPECS: readonly MealSpec[] = [
   M('scout-southwest-tofu-scramble', 'Southwest tofu scramble wraps', 'Tex-Mex', 'Tofu', 'wrap', 10, 16, [I('tofu-firm', 260), I('eggs', 150), I('salsa', 140), I('black-beans', 220), I('whole-wheat-tortilla', 112), I('olive-oil', 7)]),
   M('scout-tuscan-white-bean-pasta', 'Tuscan white bean spinach pasta', 'Italian-inspired', 'Pinto beans', 'pasta', 10, 20, [I('pasta', 320), I('pinto-beans', 260), I('spinach', 160), I('tomato-sauce', 220), I('mozzarella', 70), I('olive-oil', 10), I('garlic', 9)]),
   M('scout-simple-masoor-dal-rice', 'Simple masoor dal rice plate', 'Indian', 'Red lentils', 'stew', 8, 24, [I('red-lentils', 320), I('basmati-rice', 280), I('spinach', 140), I('tomato', 150), I('greek-yogurt', 160), I('onion', 100), I('olive-oil', 14), I('garlic', 6)]),
+
+  // Scout top-up: dairy/legume/tofu plates (no eggs, no coconut)
+  M('scout-creamy-protein-pasta', 'Creamy cottage cheese protein pasta', 'Italian', 'Cottage cheese', 'pasta', 10, 18, [I('pasta', 320), I('cottage-cheese', 280), I('spinach', 140), I('tomato', 150), I('garlic', 9), I('olive-oil', 10)]),
+  M('scout-lemon-tofu-white-bean-pasta', 'High-protein lemon tofu white bean pasta', 'Italian-inspired', 'Tofu', 'pasta', 12, 20, [I('pasta', 300), I('tofu-firm', 240), I('pinto-beans', 220), I('spinach', 140), I('lemon', 40), I('garlic', 9), I('olive-oil', 14)]),
+  M('scout-cottage-caprese-bowl', 'Burst tomato cottage cheese caprese bowl', 'Italian-inspired', 'Cottage cheese', 'bowl', 10, 14, [I('cottage-cheese', 300), I('mozzarella', 80), I('tomato', 220), I('pita', 120), I('spinach', 100), I('olive-oil', 14), I('garlic', 6)]),
+  M('scout-lentil-baked-ziti', 'Lentil baked ziti', 'Italian-inspired', 'Brown lentils', 'bake', 15, 30, [I('pasta', 300), I('lentils', 260), I('tomato-sauce', 260), I('mozzarella', 90), I('spinach', 120), I('onion', 80), I('olive-oil', 10), I('garlic', 9)]),
+  M('scout-smoky-black-bean-soup', 'Smoky black bean soup rice plate', 'Cuban-inspired', 'Black beans', 'stew', 10, 25, [I('black-beans', 320), I('vegetable-broth', 300), I('basmati-rice', 260), I('onion', 120), I('tomato', 150), I('bell-pepper', 100), I('olive-oil', 14), I('garlic', 9)]),
+  M('scout-hummus-pasta', 'Parsley scallion hummus pasta', 'Mediterranean', 'Hummus', 'pasta', 10, 18, [I('pasta', 320), I('hummus', 200), I('spinach', 140), I('onion', 100), I('chickpeas', 180), I('lemon', 30), I('olive-oil', 10), I('garlic', 6)]),
+  M('scout-dal-tadka-rice', 'Dal tadka rice plate', 'Indian', 'Brown lentils', 'stew', 10, 28, [I('lentils', 320), I('basmati-rice', 280), I('tomato', 150), I('spinach', 140), I('onion', 100), I('greek-yogurt', 140), I('olive-oil', 14), I('garlic', 6), I('ginger', 10)]),
+  M('scout-white-bean-chili', 'Creamy white bean chili plate', 'Tex-Mex', 'Pinto beans', 'stew', 12, 28, [I('pinto-beans', 320), I('vegetable-broth', 280), I('bell-pepper', 140), I('onion', 120), I('tomato-sauce', 200), I('peanut-butter', 32), I('basmati-rice', 220), I('olive-oil', 10), I('garlic', 9)]),
 ];
 
 export const STARTER_RECIPES: readonly Recipe[] = Object.freeze(MEAL_SPECS.map(recipe));
