@@ -1,15 +1,15 @@
 {
-  "name": "Recipes — Substantial Vegetarian Meals",
+  "name": "Recipes",
   "short_name": "Recipes",
-  "description": "Browse 100 substantial vegetarian lunches and dinners with macros and grocery guidance.",
+  "description": "Swipe through vegetarian lunches and dinners, then cook from exact amounts.",
   "id": "/recipes/",
   "start_url": "/recipes/",
   "scope": "/recipes/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#0e2119",
-  "theme_color": "#173a2b",
+  "background_color": "#14110e",
+  "theme_color": "#241910",
   "categories": ["food", "lifestyle", "utilities"],
   "icons": [
     {
