@@ -348,13 +348,15 @@ function App() {
 
   const cuisines = useMemo(() => [...new Set(STARTER_RECIPES.map((recipe) => recipe.cuisine))].sort(), []);
   const savedIds = useMemo(() => new Set(state?.recipes.map((recipe) => recipe.id) ?? []), [state?.recipes]);
-  const savedRecipes = useMemo(() => STARTER_RECIPES.filter((recipe) => savedIds.has(recipe.id)), [savedIds]);
+  const savedRecipes = state?.recipes ?? [];
   const shoppingRows = useMemo(() => consolidateShoppingItems(state?.shopping ?? []), [state?.shopping]);
   const searchOptions = useMemo<RecipeSearchOptions>(() => ({ query, cuisines: cuisine === 'All' ? [] : [cuisine], proteins: protein === 'All' ? [] : [protein], ...(maxMinutes ? { maxMinutes } : {}), ...(calorieBand === 'all' ? {} : { calorieBand }), ...(minProteinG ? { minProteinG } : {}), sort }), [calorieBand, cuisine, maxMinutes, minProteinG, protein, query, sort]);
   const visibleRecipes = useMemo(() => filterAndSortRecipes(STARTER_RECIPES, searchOptions), [searchOptions]);
   const deckKey = visibleRecipes.map((recipe) => recipe.id).join('|');
   useEffect(() => { setDeckIndex(0); setFreshLikes([]); }, [deckKey]);
-  const activeRecipe = route.view === 'recipe' ? STARTER_RECIPES.find((recipe) => recipe.id === route.recipeId) : undefined;
+  const activeRecipe = route.view === 'recipe'
+    ? savedRecipes.find((recipe) => recipe.id === route.recipeId) ?? STARTER_RECIPES.find((recipe) => recipe.id === route.recipeId)
+    : undefined;
 
   const openRecipe = (recipe: Recipe, from: ListView) => { returnViewRef.current = from; navigate({ view: 'recipe', recipeId: recipe.id }); };
   const toggleSave = (recipe: Recipe) => { if (savedIds.has(recipe.id)) { store.deleteRecipe(recipe.id); showToast('Removed from Saved.'); } else { store.saveRecipe(recipe); showToast('Saved for later.'); } };
