@@ -3,6 +3,7 @@ import {
   ArrowUpDown,
   Bookmark,
   BookmarkCheck,
+  CalendarDays,
   Check,
   ChefHat,
   ChevronRight,
@@ -61,10 +62,14 @@ import {
   type RecipeSearchOptions,
   type RecipeSort,
 } from './recipe-search';
+import { PlannerView } from './planner/PlannerView';
+import { activeWeekPlan } from './planner/storage';
+import { weekGrocery } from './planner/week';
+import { WeekGrocery } from './planner/WeekGrocery';
 import { useRecipesStore } from './store';
 import { useRecipesSync } from './useRecipesSync';
 
-type ListView = 'browse' | 'saved' | 'grocery' | 'settings';
+type ListView = 'week' | 'browse' | 'saved' | 'grocery' | 'settings';
 type Route = { readonly view: ListView } | { readonly view: 'recipe'; readonly recipeId: string };
 
 interface ViewDefinition {
@@ -76,6 +81,7 @@ interface ViewDefinition {
 }
 
 const VIEWS: readonly ViewDefinition[] = [
+  { id: 'week', label: 'Week', eyebrow: 'This week', title: 'Weekly planner', icon: CalendarDays },
   { id: 'browse', label: 'Browse', eyebrow: 'The stack', title: 'Swipe for dinner', icon: ChefHat },
   { id: 'saved', label: 'Saved', eyebrow: 'Kept', title: 'Meals you marked', icon: Bookmark },
   { id: 'grocery', label: 'Grocery', eyebrow: 'Recipe to store', title: 'What to buy', icon: ShoppingBasket },
@@ -91,17 +97,19 @@ const CALORIE_BANDS = [
 ] as const;
 
 function routeFromHash(): Route {
-  const [view = 'browse', encodedId] = window.location.hash.replace(/^#\/?/, '').split('/');
+  const raw = window.location.hash.replace(/^#\/?/, '');
+  if (!raw) return { view: 'week' };
+  const [view = 'week', encodedId] = raw.split('/');
   if (view === 'recipe' && encodedId) {
     try {
       return { view: 'recipe', recipeId: decodeURIComponent(encodedId) };
     } catch {
-      return { view: 'browse' };
+      return { view: 'week' };
     }
   }
   return VIEWS.some((candidate) => candidate.id === view)
     ? { view: view as ListView }
-    : { view: 'browse' };
+    : { view: 'week' };
 }
 
 function useHashRoute(): [Route, (route: Route) => void] {
@@ -340,7 +348,7 @@ function App() {
   const [activeGuide, setActiveGuide] = useState<{ guide: GroceryGuide; amount?: string }>();
   const [toast, setToast] = useState<string>();
   const [shoppingDraft, setShoppingDraft] = useState('');
-  const returnViewRef = useRef<ListView>('browse');
+  const returnViewRef = useRef<ListView>('week');
   const filterDrawerId = useId();
 
   const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast((current) => current === message ? undefined : current), 3000); }, []);
@@ -357,6 +365,7 @@ function App() {
   const activeRecipe = route.view === 'recipe'
     ? savedRecipes.find((recipe) => recipe.id === route.recipeId) ?? STARTER_RECIPES.find((recipe) => recipe.id === route.recipeId)
     : undefined;
+  const weekPlan = useMemo(() => activeWeekPlan(state), [state]);
 
   const openRecipe = (recipe: Recipe, from: ListView) => { returnViewRef.current = from; navigate({ view: 'recipe', recipeId: recipe.id }); };
   const toggleSave = (recipe: Recipe) => { if (savedIds.has(recipe.id)) { store.deleteRecipe(recipe.id); showToast('Removed from Saved.'); } else { store.saveRecipe(recipe); showToast('Saved for later.'); } };
@@ -379,7 +388,7 @@ function App() {
       <aside className="sidebar">
         <button className="brand" type="button" onClick={() => navigate({ view: 'browse' })} aria-label="Recipes home"><span className="brand-mark"><Leaf aria-hidden="true" /></span><span><strong>Recipes</strong><small>vegetarian dinners</small></span></button>
         <nav className="nav" aria-label="Primary navigation"><span className="nav__label">Recipe book</span>{VIEWS.map((item) => { const Icon = item.icon; const active = listView === item.id && route.view !== 'recipe'; return <button key={item.id} className={`nav__item${active ? ' is-active' : ''}`} type="button" onClick={() => navigate({ view: item.id })} aria-current={active ? 'page' : undefined}><Icon aria-hidden="true" /><span>{item.label}</span>{item.id === 'saved' && savedRecipes.length > 0 && <b>{savedRecipes.length}</b>}{item.id === 'grocery' && openShoppingCount > 0 && <b>{openShoppingCount}</b>}</button>; })}</nav>
-        <div className="diet-lock"><span><Leaf aria-hidden="true" /></span><div><strong>Vegetarian locked</strong><small>Eggs + dairy allowed · no breakfast</small></div></div>
+        <div className="diet-lock"><span><Leaf aria-hidden="true" /></span><div><strong>Vegetarian locked</strong><small>Eggs + dairy allowed · no meat or fish</small></div></div>
         <div className="sidebar__footer"><button className="sync-card" type="button" onClick={() => navigate({ view: 'settings' })}><span className={`sync-dot sync-dot--${sync.status}`} /><span><strong>{syncLabel}</strong><small>{sync.user ? 'Private Firebase vault' : 'Local-first favorites'}</small></span><ChevronRight aria-hidden="true" /></button></div>
       </aside>
 
@@ -388,6 +397,8 @@ function App() {
         <div className={route.view === 'recipe' ? 'main__content main__content--recipe' : 'main__content'}>
           {route.view === 'recipe' && activeRecipe && <RecipeDetail recipe={activeRecipe} saved={savedIds.has(activeRecipe.id)} onBack={() => navigate({ view: returnViewRef.current })} onToggleSave={() => toggleSave(activeRecipe)} onAddToList={() => addRecipeToList(activeRecipe)} onOpenGuide={(guide, amount) => setActiveGuide({ guide, amount })} />}
           {route.view === 'recipe' && !activeRecipe && <div className="empty-state"><ChefHat aria-hidden="true" /><h2>That recipe moved</h2><p>Browse the current substantial-meal catalog instead.</p><button className="primary-button" type="button" onClick={() => navigate({ view: 'browse' })}>Browse recipes</button></div>}
+
+          {route.view === 'week' && <PlannerView plan={weekPlan} onPlanChange={store.setWeekPlan} />}
 
           {route.view === 'browse' && <div className="page-stack">
             <section className="pick-intro">
@@ -401,7 +412,8 @@ function App() {
           {route.view === 'saved' && <div className="page-stack"><section className="saved-intro"><div><span className="hero-kicker"><BookmarkCheck aria-hidden="true" /> Your repeat list</span><h2>{savedRecipes.length ? `${savedRecipes.length} saved ${savedRecipes.length === 1 ? 'meal' : 'meals'}` : 'Nothing marked yet'}</h2><p>Bookmarks stay on this device until you sign in. Then they sync.</p></div>{savedRecipes.length > 0 && <button className="secondary-button" type="button" onClick={() => navigate({ view: 'browse' })}>Find another meal</button>}</section>{savedRecipes.length ? <section className="meal-grid">{savedRecipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} saved onOpen={() => openRecipe(recipe, 'saved')} onToggleSave={() => toggleSave(recipe)} />)}</section> : <div className="empty-state"><Bookmark aria-hidden="true" /><h2>Nothing saved yet</h2><p>Hit Save on a card when you want it again.</p><button className="primary-button" type="button" onClick={() => navigate({ view: 'browse' })}>Browse {STARTER_RECIPES.length} recipes</button></div>}</div>}
 
           {route.view === 'grocery' && <div className="page-stack page-stack--narrow"><section className="grocery-hero"><div><span className="hero-kicker"><ShoppingBasket aria-hidden="true" /> Recipe → store</span><h2>{openShoppingCount ? `${openShoppingCount} ingredients left` : 'Your grocery list is clear'}</h2><p>Every catalog ingredient comes with a plain-English explanation, package advice, a budget format, a best-fit format, and live retailer searches.</p></div>{openShoppingCount > 0 && <button className="secondary-button" type="button" onClick={() => void copyGroceryList()}><Copy aria-hidden="true" /> Copy list</button>}</section><form className="quick-add" onSubmit={(event) => { event.preventDefault(); if (containsBlockedDietTerm(shoppingDraft)) return showToast('That item crosses the vegetarian boundary.'); const added = store.addShoppingItem(shoppingDraft); if (added) { setShoppingDraft(''); showToast(`${added.name} added.`); } }}><input value={shoppingDraft} onChange={(event) => setShoppingDraft(event.target.value)} placeholder="Add another vegetarian item" aria-label="Add grocery item" /><button className="primary-button primary-button--small" type="submit">Add</button></form>
-            {shoppingRows.length > 0 ? <div className="grocery-groups">{[...groupedShopping.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([section, items]) => <section className="grocery-group" key={section}><header><div><MapPin aria-hidden="true" /><h3>{section}</h3></div><span>{items.filter((item) => !item.checked).length} left</span></header><div>{[...items].sort((a, b) => Number(a.checked) - Number(b.checked) || a.createdAt.localeCompare(b.createdAt)).map((item) => { const product = STARTER_PRODUCTS.find((candidate) => candidate.name.toLocaleLowerCase() === item.name.toLocaleLowerCase()); const guide = product ? groceryGuideForProductId(product.id) : undefined; const links = retailerLinks(guide?.budget.searchQuery ?? item.name); return <article className={`grocery-row${item.checked ? ' is-checked' : ''}`} key={item.key}><button className="check-button" type="button" onClick={() => { const shouldCheck = !item.checked; item.items.filter((entry) => entry.checked !== shouldCheck).forEach((entry) => store.toggleShoppingItem(entry.id)); }} aria-label={`${item.checked ? 'Uncheck' : 'Check'} ${item.name}`}>{item.checked && <Check aria-hidden="true" />}</button><div className="grocery-row__name"><h4>{item.name}</h4>{item.amountLabel && <p>{item.amountLabel}</p>}</div><div className="grocery-row__actions">{guide && <button className="guide-button" type="button" onClick={() => setActiveGuide({ guide, amount: item.amountLabel })}>Buying guide</button>}<a className="heb-button" href={links.heb} target="_blank" rel="noreferrer">H‑E‑B <ExternalLink aria-hidden="true" /></a></div><button className="icon-button" type="button" onClick={() => item.items.forEach((entry) => store.deleteShoppingItem(entry.id))} aria-label={`Delete ${item.name}`}><X aria-hidden="true" /></button></article>; })}</div></section>)}</div> : <div className="empty-state"><ShoppingBasket aria-hidden="true" /><h2>Choose a recipe first</h2><p>Open a meal and tap “Get all ingredients.” The exact list and buying guides appear here.</p><button className="primary-button" type="button" onClick={() => navigate({ view: 'browse' })}>Find a meal</button></div>}
+            <WeekGrocery plan={weekPlan} onAdd={(lines) => { const added = store.addShoppingItems(lines.map((line) => ({ name: line.name, amountLabel: line.amountLabel }))); showToast(added.length ? `${added.length} week ingredients added to the checklist.` : 'Those week ingredients are already on the checklist.'); }} />
+            {shoppingRows.length > 0 ? <div className="grocery-groups">{[...groupedShopping.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([section, items]) => <section className="grocery-group" key={section}><header><div><MapPin aria-hidden="true" /><h3>{section}</h3></div><span>{items.filter((item) => !item.checked).length} left</span></header><div>{[...items].sort((a, b) => Number(a.checked) - Number(b.checked) || a.createdAt.localeCompare(b.createdAt)).map((item) => { const product = STARTER_PRODUCTS.find((candidate) => candidate.name.toLocaleLowerCase() === item.name.toLocaleLowerCase()); const guide = product ? groceryGuideForProductId(product.id) : undefined; const links = retailerLinks(guide?.budget.searchQuery ?? item.name); return <article className={`grocery-row${item.checked ? ' is-checked' : ''}`} key={item.key}><button className="check-button" type="button" onClick={() => { const shouldCheck = !item.checked; item.items.filter((entry) => entry.checked !== shouldCheck).forEach((entry) => store.toggleShoppingItem(entry.id)); }} aria-label={`${item.checked ? 'Uncheck' : 'Check'} ${item.name}`}>{item.checked && <Check aria-hidden="true" />}</button><div className="grocery-row__name"><h4>{item.name}</h4>{item.amountLabel && <p>{item.amountLabel}</p>}</div><div className="grocery-row__actions">{guide && <button className="guide-button" type="button" onClick={() => setActiveGuide({ guide, amount: item.amountLabel })}>Buying guide</button>}<a className="heb-button" href={links.heb} target="_blank" rel="noreferrer">H‑E‑B <ExternalLink aria-hidden="true" /></a></div><button className="icon-button" type="button" onClick={() => item.items.forEach((entry) => store.deleteShoppingItem(entry.id))} aria-label={`Delete ${item.name}`}><X aria-hidden="true" /></button></article>; })}</div></section>)}</div> : weekGrocery(weekPlan).length === 0 ? <div className="empty-state"><ShoppingBasket aria-hidden="true" /><h2>Choose a recipe first</h2><p>Open a meal and tap “Get all ingredients.” The exact list and buying guides appear here.</p><button className="primary-button" type="button" onClick={() => navigate({ view: 'browse' })}>Find a meal</button></div> : null}
             {state.shopping.some((item) => item.checked) && <button className="clear-checked" type="button" onClick={store.clearCheckedShopping}><Trash2 aria-hidden="true" /> Clear checked items</button>}<p className="live-price-note live-price-note--panel">Retailer searches may show current local price, stock, or store location when available. This site never scrapes or freezes retailer data.</p></div>}
 
           {route.view === 'settings' && <div className="page-stack page-stack--narrow"><section className="settings-card"><div className="section-heading"><div><span className="eyebrow">Appearance</span><h2>Theme</h2></div></div><div className="theme-picker">{(['system', 'light', 'dark'] as RecipesSettings['theme'][]).map((theme) => <button key={theme} type="button" className={state.settings.theme === theme ? 'is-active' : ''} onClick={() => store.updateSettings({ theme })} aria-pressed={state.settings.theme === theme}><span>{theme === 'system' ? <Settings2 aria-hidden="true" /> : theme === 'light' ? <Sparkles aria-hidden="true" /> : <Leaf aria-hidden="true" />}</span><div><strong>{theme[0].toUpperCase() + theme.slice(1)}</strong><small>{theme === 'system' ? 'Follow this device' : `${theme} recipe book`}</small></div>{state.settings.theme === theme && <Check aria-hidden="true" />}</button>)}</div></section>

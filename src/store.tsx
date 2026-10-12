@@ -26,6 +26,8 @@ import {
   roundNutrition,
   scaleNutrition,
 } from './nutrition';
+import { encodeWeekPlan, WEEK_PLAN_ID } from './planner/storage';
+import type { WeekPlan } from './planner/types';
 
 export const RECIPES_LOCAL_STORAGE_KEY = 'recipes-state-v1';
 export const RECIPES_CLIENT_ID_KEY = 'recipes-client-id-v1';
@@ -99,6 +101,7 @@ export interface RecipesStore {
   readonly subscribeMutations: (listener: RecipesMutationListener) => () => void;
   readonly flushLocalWrites: () => Promise<void>;
   readonly clearLocalData: () => Promise<void>;
+  readonly setWeekPlan: (plan: WeekPlan) => void;
 }
 
 function record(value: unknown, field = 'value'): Record<string, unknown> {
@@ -1056,6 +1059,27 @@ export function useRecipesStore(): RecipesStore {
     }
   }, []);
 
+  const setWeekPlan = useCallback((plan: WeekPlan) => {
+    commit('recipes', (previous, clientId) => {
+      const revision = nextRecipesRevision(previous, clientId);
+      const existing = previous.recipes.find((item) => item.id === WEEK_PLAN_ID);
+      let record: Recipe;
+      try {
+        record = parseRecipe(encodeWeekPlan(
+          plan,
+          existing?.createdAt ?? revision.updatedAt,
+          revision.updatedAt,
+        ));
+      } catch {
+        return previous;
+      }
+      const recipes = existing
+        ? previous.recipes.map((item) => item.id === WEEK_PLAN_ID ? record : item)
+        : [...previous.recipes, record];
+      return { ...previous, recipes, ...revision };
+    });
+  }, [commit]);
+
   const clearLocalData = useCallback(async () => {
     await flushLocalWrites();
     if (typeof localStorage !== 'undefined') {
@@ -1118,5 +1142,6 @@ export function useRecipesStore(): RecipesStore {
     subscribeMutations,
     flushLocalWrites,
     clearLocalData,
+    setWeekPlan,
   };
 }

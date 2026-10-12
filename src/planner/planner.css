@@ -1,0 +1,94 @@
+.planner { display: grid; gap: 16px; }
+.planner-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(223, 142, 33, 0.18), transparent 32%),
+    linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--green-soft) 55%, var(--surface)));
+  box-shadow: var(--shadow-small);
+}
+.planner-hero h2 { margin-top: 8px; font-size: clamp(26px, 3vw, 40px); letter-spacing: -0.045em; }
+.planner-hero p { max-width: 680px; margin-top: 8px; color: var(--text-soft); font-size: 13px; line-height: 1.55; }
+.planner-sticky {
+  position: sticky;
+  top: 80px;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-small);
+}
+.planner-sticky div { min-width: 0; display: grid; gap: 2px; padding: 8px 10px; border-radius: 12px; background: var(--surface-soft); }
+.planner-sticky span { color: var(--text-faint); font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.planner-sticky strong { font-size: 16px; letter-spacing: -0.03em; }
+.week-grid { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 10px; }
+.day-card { min-width: 0; display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-small); }
+.day-card.is-flex { background: color-mix(in srgb, var(--warning-soft) 35%, var(--surface)); }
+.day-card__toggle { display: grid; gap: 1px; width: 100%; padding: 4px 4px 8px; border: 0; background: transparent; text-align: left; }
+.day-card__toggle span, .slot-button span { color: var(--text-faint); font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
+.day-card__toggle strong { font-size: 16px; letter-spacing: -0.03em; }
+.day-card__toggle small, .slot-button small { color: var(--text-soft); font-size: 11px; }
+.day-card__body { display: grid; gap: 6px; }
+.slot-button { display: grid; gap: 2px; width: 100%; min-height: 64px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); text-align: left; }
+.slot-button:hover { border-color: color-mix(in srgb, var(--green) 35%, var(--line)); }
+.slot-button strong { font-size: 12px; line-height: 1.3; }
+.ledger { display: grid; gap: 6px; margin-top: 4px; }
+.ledger h4 { font-size: 12px; }
+.ledger__flex { color: var(--warning); font-size: 11px; line-height: 1.4; }
+.ledger-row { display: grid; gap: 2px; }
+.ledger-row__label { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.ledger-row__label strong { color: var(--text); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.ledger-bar { height: 6px; border-radius: 99px; background: var(--surface-soft); overflow: hidden; }
+.ledger-bar span { display: block; height: 100%; border-radius: inherit; background: var(--green); }
+.ledger-row--under .ledger-bar span { background: var(--saffron); }
+.ledger-row--over .ledger-bar span { background: var(--danger); }
+.ledger-row small { color: var(--text-faint); font-size: 10px; }
+.week-totals { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.week-totals h3 { font-size: 18px; letter-spacing: -0.03em; }
+.week-totals header p, .planner-muted { margin-top: 6px; color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.week-totals__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; }
+.planner-drawer__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.planner-meal { display: grid; gap: 10px; }
+.planner-meal__flags, .planner-meal__macros { display: flex; flex-wrap: wrap; gap: 6px; }
+.planner-badge { padding: 4px 8px; border-radius: 999px; background: var(--green-soft); color: var(--green-dark); font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.planner-badge--suggestion { background: var(--warning-soft); color: var(--warning); }
+.planner-badge--estimated { background: var(--danger-soft); color: var(--danger); }
+.planner-meal__macros span { padding: 8px; border-radius: 10px; background: var(--surface-soft); font-size: 11px; color: var(--text-soft); }
+.planner-meal__macros b { color: var(--text); }
+.planner-ingredients { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.planner-ingredients li { display: grid; gap: 3px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.planner-ingredients strong, .planner-ingredients span { font-size: 12px; }
+.planner-ingredients span, .planner-ingredients p { color: var(--text-soft); font-size: 11px; line-height: 1.45; }
+.planner-swap input, .planner-eatout textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
+.planner-swap ul { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; max-height: 360px; overflow: auto; }
+.planner-swap button { display: grid; gap: 2px; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); text-align: left; }
+.planner-swap small { color: var(--text-faint); font-size: 11px; }
+.planner-eatout { display: grid; gap: 8px; }
+.planner-eatout label { display: grid; gap: 6px; font-size: 12px; font-weight: 700; }
+.planner-callout { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: var(--warning-soft); color: var(--text); }
+.planner-callout p { color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.planner-grocery .grocery-row { grid-template-columns: minmax(0, 1fr); }
+
+@media (max-width: 1180px) {
+  .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .planner-hero, .week-totals__grid { display: grid; grid-template-columns: 1fr; }
+  .planner-sticky { top: 68px; grid-template-columns: 1fr 1fr; }
+  .week-grid { grid-template-columns: 1fr; }
+  .day-card:not(.is-open) .day-card__body { display: none; }
+  .day-card__toggle { min-height: 64px; }
+}
+@media (min-width: 721px) {
+  .day-card__body { display: grid; }
+}

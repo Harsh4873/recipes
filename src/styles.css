@@ -496,7 +496,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .buying-dialog { width: 100%; padding-top: env(safe-area-inset-top); }
   .buying-dialog__header { padding-left: max(17px, env(safe-area-inset-left)); padding-right: max(17px, env(safe-area-inset-right)); }
   .buying-dialog__body { padding-left: max(17px, env(safe-area-inset-left)); padding-right: max(17px, env(safe-area-inset-right)); padding-bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px)); }
-  .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; min-height: 68px; padding: 7px max(9px, env(safe-area-inset-left)) max(7px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(18px); }
+  .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; min-height: 68px; padding: 7px max(9px, env(safe-area-inset-left)) max(7px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(18px); }
   .bottom-nav button { position: relative; min-width: 0; min-height: 50px; display: grid; place-items: center; align-content: center; gap: 3px; padding: 3px; border: 0; border-radius: 11px; color: var(--text-faint); background: transparent; }
   .bottom-nav button.is-active { color: var(--green-dark); background: var(--green-soft); }
   .bottom-nav svg { width: 19px; height: 19px; }
