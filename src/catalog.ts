@@ -303,6 +303,12 @@ function describedList(items: readonly RecipeIngredient[]): string {
   if (values.length === 2) return `${values[0]} and ${values[1]}`;
   return `${values.slice(0, -1).join(', ')}, and ${values.at(-1)}`;
 }
+function nameList(items: readonly RecipeIngredient[]): string {
+  const names = items.map((item) => item.name);
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
+}
 function selected(ingredients: readonly RecipeIngredient[], ids: ReadonlySet<string>): RecipeIngredient[] {
   return ingredients.filter((item) => ids.has(keyOf(item)));
 }
@@ -312,6 +318,9 @@ const FLATBREAD_IDS = new Set(['whole-wheat-tortilla', 'fajita-tortillas', 'corn
 const POTATO_IDS = new Set(['potato', 'sweet-potato']);
 const LEGUME_IDS = new Set(['chickpeas', 'black-beans', 'kidney-beans', 'pinto-beans', 'lentils', 'red-lentils', 'chana-dal', 'urad-dal']);
 const COLD_IDS = new Set(['greek-yogurt', 'hummus', 'salsa', 'hot-sauce', 'lemon']);
+const QUESADILLA_HELD_IDS = new Set(['whole-wheat-tortilla', 'fajita-tortillas', 'corn-tortillas', 'naan', 'paratha', 'pita', 'cheddar', 'salsa', 'greek-yogurt', 'lemon', 'hot-sauce']);
+const LOADED_HELD_IDS = new Set(['potato', 'sweet-potato', 'cheddar', 'mozzarella', 'cottage-cheese', 'greek-yogurt', 'salsa', 'lemon', 'hot-sauce']);
+const OVEN_OUT_IDS = new Set(['basmati-rice', 'brown-rice', 'quinoa', 'pasta', 'vegetable-broth', 'coconut-milk', 'hummus', 'salsa', 'greek-yogurt']);
 const WET_IDS = new Set(['tomato-paste', 'tomato-sauce', 'coconut-milk', 'peanut-butter', 'soy-sauce', 'vegetable-broth']);
 const CHEESE_IDS = new Set(['cottage-cheese', 'cheddar', 'mozzarella']);
 const ROASTABLE_IDS = new Set(['tofu-firm', 'paneer', 'tempeh', 'seitan', 'chickpeas', 'broccoli', 'mixed-vegetables', 'spinach', 'green-peas', 'onion', 'bell-pepper', 'mushrooms', 'garlic', 'ginger', 'tomato', 'potato', 'sweet-potato']);
@@ -345,9 +354,19 @@ function eggStep(ingredients: readonly RecipeIngredient[], title: string): strin
 
 function coldFinishPhrase(ingredients: readonly RecipeIngredient[]): string {
   const cold = selected(ingredients, COLD_IDS);
-  return cold.length > 0
-    ? `add ${describedList(cold)} only after the hot components leave the heat, so yogurt stays smooth and fresh sauces keep their flavor`
-    : 'let the finished meal stand off the heat for 2 minutes before serving';
+  if (cold.length === 0) return 'let the finished meal stand off the heat for 2 minutes before serving';
+  const hasYogurt = cold.some((item) => keyOf(item) === 'greek-yogurt');
+  const hasSauce = cold.some((item) => keyOf(item) === 'salsa' || keyOf(item) === 'hot-sauce' || keyOf(item) === 'hummus');
+  const reasons = [
+    hasYogurt ? 'yogurt stays smooth' : '',
+    hasSauce ? 'fresh sauces keep their flavor' : '',
+  ].filter(Boolean);
+  const because = reasons.length > 0 ? `so ${reasons.join(' and ')}` : 'so it stays fresh';
+  return `add ${describedList(cold)} only after the hot components leave the heat, ${because}`;
+}
+function exceptClause(ingredients: readonly RecipeIngredient[], ids: ReadonlySet<string>): string {
+  const held = ingredients.filter((item) => ids.has(keyOf(item)));
+  return held.length > 0 ? ` except the ${nameList(held)}` : '';
 }
 
 function coldFinish(ingredients: readonly RecipeIngredient[]): string {
@@ -444,7 +463,7 @@ function specialShapeSteps(spec: MealSpec, ingredients: readonly RecipeIngredien
   if (title.includes('quesadilla') || title.includes('crunchwrap')) {
     return [
       ...preparationSteps(ingredients),
-      `Cook the filling from ${all} except the tortillas, cheddar, Salsa, Greek yogurt, Fresh lemon, and Hot sauce for 6 to 8 minutes.`,
+      `Cook the filling from ${all}${exceptClause(ingredients, QUESADILLA_HELD_IDS)} for 6 to 8 minutes.`,
       'Warm the tortillas, divide the hot filling and Vegetarian-enzyme cheddar among them, then fold them closed.',
       'Toast each folded tortilla in a dry skillet for 2 to 3 minutes per side until crisp and the cheese melts.',
       coldFinish(ingredients),
@@ -464,7 +483,7 @@ function specialShapeSteps(spec: MealSpec, ingredients: readonly RecipeIngredien
   if (title.includes('loaded potato') || title.includes('chickpea potato')) {
     return [
       ...preparationSteps(ingredients),
-      `Cook every hot topping from ${all} except the Potato, cheeses, Greek yogurt, Salsa, Fresh lemon, and Hot sauce in a skillet until steaming.`,
+      `Cook every hot topping from ${all}${exceptClause(ingredients, LOADED_HELD_IDS)} in a skillet until steaming.`,
       'Split the fork-tender Potato, fluff its center, and pile in the hot topping.',
       'Add the Vegetarian-enzyme cheddar and cover for 2 minutes so it melts.',
       coldFinish(ingredients),
@@ -492,7 +511,9 @@ function methodSteps(spec: MealSpec, ingredients: readonly RecipeIngredient[]): 
   if (spec.method === 'tray') {
     const separateBases = bases.filter((item) => !roastable.includes(item));
     steps.push(`Heat the oven to 425°F / 220°C; toss ${describedList(roastable)} with ${describedList([...seasoning, ...oil])}, then spread in one layer.`);
-    steps.push('Roast for 20 to 25 minutes, turning the solid ingredients once; keep cooked grains, broth, coconut milk, hummus, salsa, and yogurt out of the oven.');
+    const keepOut = ingredients.filter((item) => OVEN_OUT_IDS.has(keyOf(item)));
+    const keepOutSentence = keepOut.length > 0 ? ` Keep the ${nameList(keepOut)} out of the oven.` : '';
+    steps.push(`Roast for 20 to 25 minutes, turning the solid ingredients once.${keepOutSentence}`);
     if (wet.length > 0) steps.push(`Warm ${describedList(wet)} in a small saucepan for 5 minutes to make the serving sauce.`);
     if (cheese.length > 0) steps.push(`Add ${describedList(cheese)} to the hot solid ingredients after roasting so it softens without drying out.`);
     steps.push(`Plate the roasted ingredients${separateBases.length > 0 ? ` with ${describedList(separateBases)}` : ''}, then ${coldFinishPhrase(ingredients)}.`);
@@ -682,18 +703,18 @@ const MEAL_SPECS: readonly MealSpec[] = [
   M('scout-savory-cottage-bowl', 'Savory cottage chickpea pita bowl', 'Mediterranean', 'Cottage cheese', 'bowl', 10, 12, [I('cottage-cheese', 280), I('chickpeas', 240), I('tomato', 150), I('spinach', 120), I('pita', 120), I('olive-oil', 10)]),
   M('scout-curried-chickpea-spinach-rice', 'Curried chickpeas with spinach rice', 'Indian', 'Chickpeas', 'curry', 10, 22, [I('chickpeas', 300), I('spinach', 160), I('tomato-sauce', 200), I('basmati-rice', 280), I('onion', 100), I('olive-oil', 14), I('garlic', 9), I('ginger', 10)]),
   M('scout-southwest-tofu-scramble', 'Southwest tofu scramble wraps', 'Tex-Mex', 'Tofu', 'wrap', 10, 16, [I('tofu-firm', 260), I('eggs', 150), I('salsa', 140), I('black-beans', 220), I('whole-wheat-tortilla', 112), I('olive-oil', 7)]),
-  M('scout-tuscan-white-bean-pasta', 'Tuscan white bean spinach pasta', 'Italian-inspired', 'Pinto beans', 'pasta', 10, 20, [I('pasta', 320), I('pinto-beans', 260), I('spinach', 160), I('tomato-sauce', 220), I('mozzarella', 70), I('olive-oil', 10), I('garlic', 9)]),
+  M('scout-tuscan-white-bean-pasta', 'Tuscan pinto bean spinach pasta', 'Italian-inspired', 'Pinto beans', 'pasta', 10, 20, [I('pasta', 320), I('pinto-beans', 260), I('spinach', 160), I('tomato-sauce', 220), I('mozzarella', 70), I('olive-oil', 10), I('garlic', 9)]),
   M('scout-simple-masoor-dal-rice', 'Simple masoor dal rice plate', 'Indian', 'Red lentils', 'stew', 8, 24, [I('red-lentils', 320), I('basmati-rice', 280), I('spinach', 140), I('tomato', 150), I('greek-yogurt', 160), I('onion', 100), I('olive-oil', 14), I('garlic', 6)]),
 
   // Scout top-up: dairy/legume/tofu plates (no eggs, no coconut)
   M('scout-creamy-protein-pasta', 'Creamy cottage cheese protein pasta', 'Italian', 'Cottage cheese', 'pasta', 10, 18, [I('pasta', 320), I('cottage-cheese', 280), I('spinach', 140), I('tomato', 150), I('garlic', 9), I('olive-oil', 10)]),
-  M('scout-lemon-tofu-white-bean-pasta', 'High-protein lemon tofu white bean pasta', 'Italian-inspired', 'Tofu', 'pasta', 12, 20, [I('pasta', 300), I('tofu-firm', 240), I('pinto-beans', 220), I('spinach', 140), I('lemon', 40), I('garlic', 9), I('olive-oil', 14)]),
+  M('scout-lemon-tofu-white-bean-pasta', 'High-protein lemon tofu pinto bean pasta', 'Italian-inspired', 'Tofu', 'pasta', 12, 20, [I('pasta', 300), I('tofu-firm', 240), I('pinto-beans', 220), I('spinach', 140), I('lemon', 40), I('garlic', 9), I('olive-oil', 14)]),
   M('scout-cottage-caprese-bowl', 'Burst tomato cottage cheese caprese bowl', 'Italian-inspired', 'Cottage cheese', 'bowl', 10, 14, [I('cottage-cheese', 300), I('mozzarella', 80), I('tomato', 220), I('pita', 120), I('spinach', 100), I('olive-oil', 14), I('garlic', 6)]),
   M('scout-lentil-baked-ziti', 'Lentil baked ziti', 'Italian-inspired', 'Brown lentils', 'bake', 15, 30, [I('pasta', 300), I('lentils', 260), I('tomato-sauce', 260), I('mozzarella', 90), I('spinach', 120), I('onion', 80), I('olive-oil', 10), I('garlic', 9)]),
   M('scout-smoky-black-bean-soup', 'Smoky black bean soup rice plate', 'Cuban-inspired', 'Black beans', 'stew', 10, 25, [I('black-beans', 320), I('vegetable-broth', 300), I('basmati-rice', 260), I('onion', 120), I('tomato', 150), I('bell-pepper', 100), I('olive-oil', 14), I('garlic', 9)]),
   M('scout-hummus-pasta', 'Parsley scallion hummus pasta', 'Mediterranean', 'Hummus', 'pasta', 10, 18, [I('pasta', 320), I('hummus', 200), I('spinach', 140), I('onion', 100), I('chickpeas', 180), I('lemon', 30), I('olive-oil', 10), I('garlic', 6)]),
   M('scout-dal-tadka-rice', 'Dal tadka rice plate', 'Indian', 'Brown lentils', 'stew', 10, 28, [I('lentils', 320), I('basmati-rice', 280), I('tomato', 150), I('spinach', 140), I('onion', 100), I('greek-yogurt', 140), I('olive-oil', 14), I('garlic', 6), I('ginger', 10)]),
-  M('scout-white-bean-chili', 'Creamy white bean chili plate', 'Tex-Mex', 'Pinto beans', 'stew', 12, 28, [I('pinto-beans', 320), I('vegetable-broth', 280), I('bell-pepper', 140), I('onion', 120), I('tomato-sauce', 200), I('peanut-butter', 32), I('basmati-rice', 220), I('olive-oil', 10), I('garlic', 9)]),
+  M('scout-white-bean-chili', 'Creamy pinto bean chili plate', 'Tex-Mex', 'Pinto beans', 'stew', 12, 28, [I('pinto-beans', 320), I('vegetable-broth', 280), I('bell-pepper', 140), I('onion', 120), I('tomato-sauce', 200), I('peanut-butter', 32), I('basmati-rice', 220), I('olive-oil', 10), I('garlic', 9)]),
 ];
 
 export const STARTER_RECIPES: readonly Recipe[] = Object.freeze(MEAL_SPECS.map(recipe));

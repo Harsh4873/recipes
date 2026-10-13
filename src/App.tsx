@@ -63,8 +63,8 @@ import {
   type RecipeSort,
 } from './recipe-search';
 import { PlannerView } from './planner/PlannerView';
-import { activeWeekPlan } from './planner/storage';
-import { weekGrocery } from './planner/week';
+import { activeWeekPlan, WEEK_PLAN_ID } from './planner/storage';
+import { weekGrocery, weekHeading } from './planner/week';
 import { WeekGrocery } from './planner/WeekGrocery';
 import { useRecipesStore } from './store';
 import { useRecipesSync } from './useRecipesSync';
@@ -82,13 +82,20 @@ interface ViewDefinition {
 
 const VIEWS: readonly ViewDefinition[] = [
   { id: 'week', label: 'Week', eyebrow: 'This week', title: 'Weekly planner', icon: CalendarDays },
-  { id: 'browse', label: 'Browse', eyebrow: 'The stack', title: 'Swipe for dinner', icon: ChefHat },
+  { id: 'browse', label: 'Browse', eyebrow: 'The stack', title: 'Swipe a plate', icon: ChefHat },
   { id: 'saved', label: 'Saved', eyebrow: 'Kept', title: 'Meals you marked', icon: Bookmark },
   { id: 'grocery', label: 'Grocery', eyebrow: 'Recipe to store', title: 'What to buy', icon: ShoppingBasket },
   { id: 'settings', label: 'Settings', eyebrow: 'On this device', title: 'Preferences and sync', icon: Settings2 },
 ];
 
-const PROTEIN_FILTERS = ['Paneer', 'Tofu', 'Beans', 'Lentils', 'Eggs', 'Tempeh', 'Seitan', 'Cheese'] as const;
+const PROTEIN_FILTERS = ['Paneer', 'Tofu', 'Beans', 'Lentils', 'Eggs', 'Tempeh', 'Seitan', 'Cheese', 'Edamame', 'Greek yogurt', 'Green peas'] as const;
+const BACK_LABELS: Readonly<Record<ListView, string>> = {
+  week: 'Back to the week',
+  browse: 'Back to the stack',
+  saved: 'Back to saved',
+  grocery: 'Back to grocery',
+  settings: 'Back to settings',
+};
 const CALORIE_BANDS = [
   { id: 'all', label: 'All substantial meals' },
   { id: '800-899', label: '800–899 kcal' },
@@ -102,7 +109,9 @@ function routeFromHash(): Route {
   const [view = 'week', encodedId] = raw.split('/');
   if (view === 'recipe' && encodedId) {
     try {
-      return { view: 'recipe', recipeId: decodeURIComponent(encodedId) };
+      const recipeId = decodeURIComponent(encodedId);
+      if (recipeId === WEEK_PLAN_ID) return { view: 'week' };
+      return { view: 'recipe', recipeId };
     } catch {
       return { view: 'week' };
     }
@@ -204,14 +213,14 @@ function RecipeCard({ recipe, saved, onOpen, onToggleSave }: { recipe: Recipe; s
   return (
     <article className="meal-card">
       <div className="meal-card__art">
-        <img src={plateSrc(photo)} alt="" draggable={false} />
+        <img src={plateSrc(photo)} alt="" draggable={false} loading="lazy" />
         <span className="meal-card__cuisine">{recipe.cuisine}</span>
         <span className="meal-card__time"><Clock3 aria-hidden="true" /> {totalMinutes(recipe)} min</span>
         <a className="meal-card__credit" href={photo.source} target="_blank" rel="noreferrer" title={`${photo.artist}, ${photo.license}`} onClick={(event) => event.stopPropagation()}>{plateCredit(photo)}</a>
       </div>
       <div className="meal-card__body">
         <div className="meal-card__heading"><div><h3>{recipe.title}</h3><p>{mealFacts(recipe)}</p></div></div>
-        <div className="meal-card__macros" aria-label="Macros"><span><b>{formatNumber(recipe.nutritionPerServing.proteinG)}</b>g protein</span><span><b>{formatNumber(recipe.nutritionPerServing.carbsG)}</b>g carbs</span><span><b>{formatNumber(recipe.nutritionPerServing.fatG)}</b>g fat</span></div>
+        <div className="meal-card__macros" aria-label="Macros"><span><b>{formatNumber(recipe.nutritionPerServing.calories)}</b> kcal</span><span><b>{formatNumber(recipe.nutritionPerServing.proteinG)}</b>g protein</span><span><b>{formatNumber(recipe.nutritionPerServing.carbsG)}</b>g carbs</span><span><b>{formatNumber(recipe.nutritionPerServing.fatG)}</b>g fat</span></div>
         <div className="tag-row">{recipe.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)}</div>
         <div className="meal-card__footer"><span>{recipe.ingredients.length} ingredients</span><span>View recipe <ChevronRight aria-hidden="true" /></span></div>
       </div>
@@ -304,21 +313,34 @@ function SignOutStatus() {
   return createPortal(<div className="signout-scrim" role="alertdialog" aria-modal="true" aria-live="assertive" aria-labelledby={titleId} aria-describedby={descriptionId}><div ref={panelRef} tabIndex={-1}><LoaderCircle className="spin" aria-hidden="true" /><strong id={titleId}>Finishing private sync…</strong><span id={descriptionId}>Keep Recipes open while the latest confirmed copy is protected.</span></div></div>, document.body);
 }
 
-function RecipeDetail({ recipe, saved, onBack, onToggleSave, onAddToList, onOpenGuide }: { recipe: Recipe; saved: boolean; onBack: () => void; onToggleSave: () => void; onAddToList: () => void; onOpenGuide: (guide: GroceryGuide, amount: string) => void }) {
+function partialReferenceNotes(recipe: Recipe): string[] {
+  const notes: string[] = [];
+  for (const ingredient of recipe.ingredients) {
+    const provenance = ingredient.snapshot?.provenance;
+    if (provenance?.quality !== 'partial') continue;
+    for (const warning of provenance.warnings) {
+      if (warning.includes('displayed as 0')) notes.push(`${ingredient.name}: ${warning}`);
+    }
+  }
+  return notes;
+}
+
+function RecipeDetail({ recipe, saved, backLabel, onBack, onToggleSave, onAddToList, onOpenGuide }: { recipe: Recipe; saved: boolean; backLabel: string; onBack: () => void; onToggleSave: () => void; onAddToList: () => void; onOpenGuide: (guide: GroceryGuide, amount: string) => void }) {
   const nutrition = recipe.nutritionPerServing;
   const photo = plateForRecipe(recipe);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const partialNotes = partialReferenceNotes(recipe);
   useEffect(() => { titleRef.current?.focus({ preventScroll: true }); }, [recipe.id]);
   return (
     <div className="recipe-page">
-      <button className="back-button" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" /> Back to the stack</button>
+      <button className="back-button" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" /> {backLabel}</button>
       <section className="recipe-hero">
         <div className="recipe-hero__photo">
           <img src={plateSrc(photo)} alt={photo.alt} />
           <a href={photo.source} target="_blank" rel="noreferrer" title={`${photo.artist}, ${photo.license}`}>{plateCredit(photo)}</a>
         </div>
         <div className="recipe-hero__copy"><div className="recipe-hero__meta"><span>{recipe.cuisine}</span><span><Clock3 aria-hidden="true" /> {recipe.prepMinutes} min prep · {recipe.cookMinutes} min cook</span></div><h1 ref={titleRef} tabIndex={-1}>{recipe.title}</h1><p>{mealFacts(recipe)}. The photo is a similar plate, not this exact recipe.</p><div className="tag-row tag-row--hero">{recipe.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="recipe-hero__actions"><button className="primary-button" type="button" onClick={onAddToList}><ShoppingBasket aria-hidden="true" /> Get all ingredients</button><SaveButton saved={saved} onClick={onToggleSave} /></div></div>
-        <div className="recipe-hero__nutrition"><span className="eyebrow">One plate</span><MacroStrip recipe={recipe} /><div className="nutrition-secondary"><span><b>{formatNumber(nutrition.fiberG, 1)}g</b> fiber</span><span><b>{formatNumber(nutrition.saturatedFatG, 1)}g</b> saturated fat</span><span><b>{formatNumber(nutrition.sodiumMg)}</b>mg sodium</span></div></div>
+        <div className="recipe-hero__nutrition"><span className="eyebrow">One plate</span><MacroStrip recipe={recipe} /><div className="nutrition-secondary"><span><b>{formatNumber(nutrition.fiberG, 1)}g</b> fiber</span><span><b>{formatNumber(nutrition.saturatedFatG, 1)}g</b> saturated fat</span><span><b>{formatNumber(nutrition.sodiumMg)}</b>mg sodium</span></div>{partialNotes.length > 0 && <div className="notice notice--warning"><CircleAlert aria-hidden="true" /><div><strong>Partial reference data</strong>{partialNotes.map((note) => <span key={note}>{note}</span>)}</div></div>}</div>
       </section>
       <div className="recipe-content-grid">
         <section className="recipe-section ingredients-section"><div className="section-heading"><div><span className="eyebrow">Exact amounts</span><h2>Ingredients</h2></div><span>{recipe.ingredients.length} items</span></div><div className="ingredient-stack">{recipe.ingredients.map((ingredient, index) => { const guide = ingredient.productId ? groceryGuideForProductId(ingredient.productId) : undefined; return <article className="ingredient-row" key={`${recipe.id}-${ingredient.id}-${index}`}><span className="ingredient-row__number">{String(index + 1).padStart(2, '0')}</span><div><h3>{ingredient.name}</h3><p>{ingredient.amountLabel}{ingredient.optional ? ' · optional' : ''}</p></div>{guide && <button type="button" onClick={() => onOpenGuide(guide, ingredient.amountLabel)}>How to buy <ChevronRight aria-hidden="true" /></button>}</article>; })}</div><button className="primary-button primary-button--full" type="button" onClick={onAddToList}><ShoppingBasket aria-hidden="true" /> Add this recipe to Grocery</button></section>
@@ -349,14 +371,34 @@ function App() {
   const [toast, setToast] = useState<string>();
   const [shoppingDraft, setShoppingDraft] = useState('');
   const returnViewRef = useRef<ListView>('week');
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const returnedFromRecipe = useRef(false);
   const filterDrawerId = useId();
 
   const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast((current) => current === message ? undefined : current), 3000); }, []);
   useEffect(() => { if (state) document.documentElement.dataset.theme = state.settings.theme; }, [state?.settings.theme]);
+  useEffect(() => {
+    if (route.view === 'recipe') {
+      returnedFromRecipe.current = true;
+      return;
+    }
+    if (!returnedFromRecipe.current) return;
+    returnedFromRecipe.current = false;
+    headingRef.current?.focus();
+  }, [route]);
+  useEffect(() => {
+    const match = window.location.hash.match(/^#\/recipe\/([^/?#]+)/);
+    if (!match) return;
+    try {
+      if (decodeURIComponent(match[1]) === WEEK_PLAN_ID) navigate({ view: 'week' });
+    } catch {
+      navigate({ view: 'week' });
+    }
+  }, [navigate]);
 
   const cuisines = useMemo(() => [...new Set(STARTER_RECIPES.map((recipe) => recipe.cuisine))].sort(), []);
-  const savedIds = useMemo(() => new Set(state?.recipes.map((recipe) => recipe.id) ?? []), [state?.recipes]);
-  const savedRecipes = state?.recipes ?? [];
+  const savedRecipes = useMemo(() => (state?.recipes ?? []).filter((recipe) => recipe.id !== WEEK_PLAN_ID), [state?.recipes]);
+  const savedIds = useMemo(() => new Set(savedRecipes.map((recipe) => recipe.id)), [savedRecipes]);
   const shoppingRows = useMemo(() => consolidateShoppingItems(state?.shopping ?? []), [state?.shopping]);
   const searchOptions = useMemo<RecipeSearchOptions>(() => ({ query, cuisines: cuisine === 'All' ? [] : [cuisine], proteins: protein === 'All' ? [] : [protein], ...(maxMinutes ? { maxMinutes } : {}), ...(calorieBand === 'all' ? {} : { calorieBand }), ...(minProteinG ? { minProteinG } : {}), sort }), [calorieBand, cuisine, maxMinutes, minProteinG, protein, query, sort]);
   const visibleRecipes = useMemo(() => filterAndSortRecipes(STARTER_RECIPES, searchOptions), [searchOptions]);
@@ -371,7 +413,7 @@ function App() {
   const toggleSave = (recipe: Recipe) => { if (savedIds.has(recipe.id)) { store.deleteRecipe(recipe.id); showToast('Removed from Saved.'); } else { store.saveRecipe(recipe); showToast('Saved for later.'); } };
   const addRecipeToList = (recipe: Recipe) => { const added = store.addShoppingItems(recipe.ingredients.map((ingredient) => ({ name: ingredient.name, amountLabel: `${ingredient.amountLabel}${ingredient.optional ? ' · optional' : ''}`, recipeId: recipe.id }))); showToast(added.length ? `${added.length} ingredients added to Grocery.` : 'That recipe is already on your grocery list.'); };
   const copyGroceryList = async () => { const open = shoppingRows.filter((item) => !item.checked); const text = open.map((item) => `• ${item.name}${item.amountLabel ? `: ${item.amountLabel}` : ''}`).join('\n'); if (!text) return showToast('Your grocery list is empty.'); try { await navigator.clipboard.writeText(text); showToast('Grocery list copied.'); } catch { showToast('This browser could not copy the list.'); } };
-  const exportData = () => { try { const blob = new Blob([store.exportState()], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `recipes-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url); } catch (error) { showToast(error instanceof Error ? error.message : 'Could not export Recipes.'); } };
+  const exportData = () => { try { const blob = new Blob([store.exportState()], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `recipes-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1500); } catch (error) { showToast(error instanceof Error ? error.message : 'Could not export Recipes.'); } };
   const importData = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; try { store.importState(await file.text()); showToast('Recipes backup imported.'); } catch (error) { showToast(error instanceof Error ? error.message : 'That backup could not be imported.'); } };
   const resetLocalData = async () => { if (sync.user && sync.status !== 'synced') return showToast('Wait for confirmed sync, or export a backup, before clearing this device.'); if (!window.confirm('Clear saved recipes and grocery items only on this device?')) return; try { await store.clearLocalData(); if (sync.user) window.location.reload(); else showToast('Recipes was cleared on this device.'); } catch (error) { showToast(error instanceof Error ? error.message : 'Could not clear local data safely.'); } };
 
@@ -386,16 +428,16 @@ function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <button className="brand" type="button" onClick={() => navigate({ view: 'browse' })} aria-label="Recipes home"><span className="brand-mark"><Leaf aria-hidden="true" /></span><span><strong>Recipes</strong><small>vegetarian dinners</small></span></button>
+        <button className="brand" type="button" onClick={() => navigate({ view: 'week' })} aria-label="Recipes home"><span className="brand-mark"><Leaf aria-hidden="true" /></span><span><strong>Recipes</strong><small>vegetarian plates</small></span></button>
         <nav className="nav" aria-label="Primary navigation"><span className="nav__label">Recipe book</span>{VIEWS.map((item) => { const Icon = item.icon; const active = listView === item.id && route.view !== 'recipe'; return <button key={item.id} className={`nav__item${active ? ' is-active' : ''}`} type="button" onClick={() => navigate({ view: item.id })} aria-current={active ? 'page' : undefined}><Icon aria-hidden="true" /><span>{item.label}</span>{item.id === 'saved' && savedRecipes.length > 0 && <b>{savedRecipes.length}</b>}{item.id === 'grocery' && openShoppingCount > 0 && <b>{openShoppingCount}</b>}</button>; })}</nav>
         <div className="diet-lock"><span><Leaf aria-hidden="true" /></span><div><strong>Vegetarian locked</strong><small>Eggs + dairy allowed · no meat or fish</small></div></div>
         <div className="sidebar__footer"><button className="sync-card" type="button" onClick={() => navigate({ view: 'settings' })}><span className={`sync-dot sync-dot--${sync.status}`} /><span><strong>{syncLabel}</strong><small>{sync.user ? 'Private Firebase vault' : 'Local-first favorites'}</small></span><ChevronRight aria-hidden="true" /></button></div>
       </aside>
 
       <main className="main">
-        {route.view !== 'recipe' && <header className="topbar"><div><span className="eyebrow">{currentView.eyebrow}</span><h1>{currentView.title}</h1></div><div className="topbar__right"><span className="catalog-pill"><Leaf aria-hidden="true" /> Ovo-lacto vegetarian</span></div></header>}
+        {route.view !== 'recipe' && <header className="topbar"><div><span className="eyebrow">{listView === 'week' ? weekHeading(weekPlan) : currentView.eyebrow}</span><h1 ref={headingRef} tabIndex={-1}>{currentView.title}</h1></div><div className="topbar__right"><span className="catalog-pill"><Leaf aria-hidden="true" /> Ovo-lacto vegetarian</span></div></header>}
         <div className={route.view === 'recipe' ? 'main__content main__content--recipe' : 'main__content'}>
-          {route.view === 'recipe' && activeRecipe && <RecipeDetail recipe={activeRecipe} saved={savedIds.has(activeRecipe.id)} onBack={() => navigate({ view: returnViewRef.current })} onToggleSave={() => toggleSave(activeRecipe)} onAddToList={() => addRecipeToList(activeRecipe)} onOpenGuide={(guide, amount) => setActiveGuide({ guide, amount })} />}
+          {route.view === 'recipe' && activeRecipe && <RecipeDetail recipe={activeRecipe} saved={savedIds.has(activeRecipe.id)} backLabel={BACK_LABELS[returnViewRef.current]} onBack={() => navigate({ view: returnViewRef.current })} onToggleSave={() => toggleSave(activeRecipe)} onAddToList={() => addRecipeToList(activeRecipe)} onOpenGuide={(guide, amount) => setActiveGuide({ guide, amount })} />}
           {route.view === 'recipe' && !activeRecipe && <div className="empty-state"><ChefHat aria-hidden="true" /><h2>That recipe moved</h2><p>Browse the current substantial-meal catalog instead.</p><button className="primary-button" type="button" onClick={() => navigate({ view: 'browse' })}>Browse recipes</button></div>}
 
           {route.view === 'week' && <PlannerView plan={weekPlan} onPlanChange={store.setWeekPlan} />}

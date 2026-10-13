@@ -26,6 +26,25 @@ self.addEventListener('fetch', (event) => {
   const scopePath = new URL(self.registration.scope).pathname;
   if (url.origin !== self.location.origin || !url.pathname.startsWith(scopePath)) return;
 
+  if (/\/plates\/[^/]+\.(?:jpe?g|png|webp)$/i.test(url.pathname)) {
+    const cachePromise = caches.open(CACHE_NAME);
+    const networkPromise = fetch(request).then(async (response) => {
+      if (response.ok && response.type === 'basic') {
+        const cache = await cachePromise.catch(() => undefined);
+        if (cache) await cache.put(request, response.clone()).catch(() => undefined);
+      }
+      return response;
+    }).catch(() => undefined);
+    event.waitUntil(networkPromise.then(() => undefined));
+    event.respondWith((async () => {
+      const cache = await cachePromise;
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      return (await networkPromise) ?? new Response('', { status: 504 });
+    })());
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)

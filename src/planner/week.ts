@@ -6,6 +6,7 @@ import { plannerRecipeById, type PlannerIngredient, type PlannerRecipe } from '.
 import {
   eatOutSlot,
   MEAL_SLOTS,
+  MEAL_SLOT_LABELS,
   recipeSlot,
   type DayPlan,
   type MealSlot,
@@ -204,7 +205,7 @@ export interface GroceryLine {
 }
 
 export function weekGrocery(plan: WeekPlan): GroceryLine[] {
-  const grouped = new Map<string, { name: string; labels: string[]; grams: number; estimated: boolean; sourceLabel: string; sourceNote: string }>();
+  const grouped = new Map<string, { name: string; labels: string[]; grams: number; weighed: boolean; estimated: boolean; sourceLabel: string; sourceNote: string }>();
   for (const dayPlan of plan.days) {
     for (const slotId of MEAL_SLOTS) {
       const slot = dayPlan.slots[slotId];
@@ -213,16 +214,19 @@ export function weekGrocery(plan: WeekPlan): GroceryLine[] {
       if (!meal) continue;
       for (const ingredient of meal.ingredients) {
         const key = ingredient.name.trim().toLowerCase();
+        const hasGrams = typeof ingredient.grams === 'number';
         const current = grouped.get(key) ?? {
           name: ingredient.name,
           labels: [],
           grams: 0,
+          weighed: true,
           estimated: ingredient.estimated,
           sourceLabel: ingredient.sourceLabel,
           sourceNote: ingredient.sourceNote,
         };
         current.labels.push(ingredient.amountLabel);
-        current.grams += ingredient.grams ?? 0;
+        if (hasGrams) current.grams += ingredient.grams ?? 0;
+        else current.weighed = false;
         current.estimated = current.estimated || ingredient.estimated;
         grouped.set(key, current);
       }
@@ -232,7 +236,7 @@ export function weekGrocery(plan: WeekPlan): GroceryLine[] {
     .map((item) => ({
       key: item.name.toLowerCase(),
       name: item.name,
-      amountLabel: item.grams > 0 ? `${trimGrams(item.grams)} g this week` : item.labels.join(' + '),
+      amountLabel: item.weighed && item.grams > 0 ? `${trimGrams(item.grams)} g this week` : item.labels.join(' + '),
       estimated: item.estimated,
       sourceLabel: item.sourceLabel,
       sourceNote: item.sourceNote,
@@ -254,14 +258,99 @@ export function replaceSlot(plan: WeekPlan, date: string, slotId: MealSlotId, sl
   };
 }
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+const FALLBACK_WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
 export function formatDayLabel(date: string, index: number): { weekday: string; monthDay: string } {
-  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const [, monthText, dayText] = date.split('-');
+  const [yearText, monthText, dayText] = date.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  const valid = Number.isInteger(year)
+    && month >= 1
+    && month <= 12
+    && day >= 1
+    && day <= 31
+    && parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
   return {
-    weekday: weekdays[index] ?? 'Day',
-    monthDay: `${months[Number(monthText) - 1] ?? ''} ${Number(dayText)}`,
+    weekday: valid ? WEEKDAY_NAMES[parsed.getUTCDay()] : (FALLBACK_WEEKDAYS[index] ?? 'Day'),
+    monthDay: `${MONTH_NAMES[month - 1] ?? ''} ${Number.isFinite(day) ? day : ''}`.trim(),
   };
+}
+
+function englishList(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+}
+
+export interface EatOutEntry {
+  readonly date: string;
+  readonly weekday: string;
+  readonly slotId: MealSlotId;
+  readonly slotLabel: string;
+}
+
+export function eatOutEntries(plan: WeekPlan): EatOutEntry[] {
+  const entries: EatOutEntry[] = [];
+  plan.days.forEach((dayPlan, index) => {
+    for (const slotId of MEAL_SLOTS) {
+      if (dayPlan.slots[slotId].kind !== 'eat-out') continue;
+      entries.push({
+        date: dayPlan.date,
+        weekday: formatDayLabel(dayPlan.date, index).weekday,
+        slotId,
+        slotLabel: MEAL_SLOT_LABELS[slotId].toLowerCase(),
+      });
+    }
+  });
+  return entries;
+}
+
+export function weekHeading(plan: WeekPlan): string {
+  const start = plan.days[0]?.date ?? plan.weekStart;
+  return `Week of ${formatDayLabel(start, 0).monthDay}`;
+}
+
+export function dayFlexLabel(dayPlan: DayPlan): string | undefined {
+  const names = MEAL_SLOTS
+    .filter((slotId) => dayPlan.slots[slotId].kind === 'eat-out')
+    .map((slotId) => MEAL_SLOT_LABELS[slotId].toLowerCase());
+  return names.length > 0 ? `Flex ${englishList(names)}` : undefined;
+}
+
+export function dayEatOutNote(dayPlan: DayPlan): string | undefined {
+  const names = MEAL_SLOTS
+    .filter((slotId) => dayPlan.slots[slotId].kind === 'eat-out')
+    .map((slotId) => MEAL_SLOT_LABELS[slotId].toLowerCase());
+  if (names.length === 0) return undefined;
+  const list = englishList(names);
+  return names.length === 1
+    ? `Eat-out ${list} is not in these totals.`
+    : `Eat-out ${list} are not in these totals.`;
+}
+
+export function weekTotalsNote(plan: WeekPlan): string {
+  const entries = eatOutEntries(plan);
+  if (entries.length === 0) {
+    return 'Sums include every logged breakfast, lunch, and snack. The planned-day average uses every day.';
+  }
+  const named = englishList(entries.map((entry) => `${entry.weekday}'s eat-out ${entry.slotLabel}`));
+  const days = new Set(entries.map((entry) => entry.date)).size;
+  const verb = entries.length === 1 ? 'is' : 'are';
+  const dayPhrase = days === 1 ? 'that flex day' : `those ${days} flex days`;
+  return `Sums include every logged breakfast, lunch, and snack. ${named} ${verb} omitted from the day ledger. The planned-day average skips ${dayPhrase}, including meals that were still logged.`;
+}
+
+export function loggedSumNote(plan: WeekPlan): string {
+  const entries = eatOutEntries(plan);
+  if (entries.length === 0) return 'Includes every logged breakfast, lunch, and snack.';
+  const named = englishList(entries.map((entry) => `${entry.weekday} ${entry.slotLabel}`));
+  return `Logged meals stay in this sum. Omitted from each day ledger: ${named}.`;
 }
 
 export function ledgerRows(

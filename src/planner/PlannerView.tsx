@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Nutrition } from '../model';
 import { DAILY_TARGETS, LEDGER_KEYS, LEDGER_LABELS, LEDGER_UNITS, ledgerTone } from './macros';
 import { MealDrawer } from './MealDrawer';
@@ -14,18 +14,40 @@ import {
 } from './types';
 import {
   averageLedger,
+  dayEatOutNote,
+  dayFlexLabel,
   defaultWeekPlan,
   formatDayLabel,
   ledgerRows,
+  loggedSumNote,
   replaceSlot,
   resolveMeal,
   sumLedgers,
+  weekHeading,
   weekLedgers,
+  weekTotalsNote,
 } from './week';
 import './planner.css';
 
 function formatNumber(value: number, digits = 0): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(value);
+}
+
+function useNarrowDays(): boolean {
+  const [narrow, setNarrow] = useState(() => (
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 720px)').matches
+      : false
+  ));
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const query = window.matchMedia('(max-width: 720px)');
+    const apply = () => setNarrow(query.matches);
+    apply();
+    query.addEventListener('change', apply);
+    return () => query.removeEventListener('change', apply);
+  }, []);
+  return narrow;
 }
 
 function signed(value: number, digits = 0): string {
@@ -53,6 +75,7 @@ export function PlannerView({
   );
   const [openDate, setOpenDate] = useState(plan.days[0]?.date ?? '');
   const [active, setActive] = useState<{ date: string; slotId: MealSlotId; mode: 'meal' | 'swap' | 'eat-out' }>();
+  const narrowDays = useNarrowDays();
 
   const activeDay = plan.days.find((day) => day.date === active?.date);
   const activeSlot = active && activeDay ? activeDay.slots[active.slotId] : undefined;
@@ -60,10 +83,10 @@ export function PlannerView({
   const activeIndex = active ? plan.days.findIndex((day) => day.date === active.date) : -1;
 
   return (
-    <div className="planner">
+    <div className={`planner${narrowDays ? ' is-narrow' : ''}`}>
       <section className="planner-hero">
         <div>
-          <span className="hero-kicker">Week of Oct 12</span>
+          <span className="hero-kicker">{weekHeading(plan)}</span>
           <h2>Breakfast, lunch, and snacks</h2>
           <p>
             Daily targets are {DAILY_TARGETS.calories} kcal, {DAILY_TARGETS.proteinG} g protein, {DAILY_TARGETS.carbsG} g carbs, {DAILY_TARGETS.fatG} g fat, and {DAILY_TARGETS.fiberG} g fiber.
@@ -88,18 +111,32 @@ export function PlannerView({
         <div><span>Avg protein</span><strong>{formatNumber(plannedAverage.proteinG, 0)} g</strong></div>
       </section>
 
+      <div className="week-grid-frame">
       <div className="week-grid">
         {plan.days.map((day, index) => {
           const ledger = ledgers[index];
           const label = formatDayLabel(day.date, index);
           const open = openDate === day.date;
+          const flexLabel = dayFlexLabel(day);
+          const summary = flexLabel
+            ? `${flexLabel} · ${formatNumber(ledger.nutrition.calories)} kcal`
+            : `${formatNumber(ledger.nutrition.calories)} kcal`;
+          const heading = (
+            <>
+              <span>{label.weekday}</span>
+              <strong>{label.monthDay}</strong>
+              <small>{summary}</small>
+            </>
+          );
           return (
             <article className={`day-card${open ? ' is-open' : ''}${ledger.flex ? ' is-flex' : ''}`} key={day.date}>
-              <button className="day-card__toggle" type="button" aria-expanded={open} onClick={() => setOpenDate(open ? '' : day.date)}>
-                <span>{label.weekday}</span>
-                <strong>{label.monthDay}</strong>
-                <small>{ledger.flex ? 'Flex lunch' : `${formatNumber(ledger.nutrition.calories)} kcal`}</small>
-              </button>
+              {narrowDays ? (
+                <button className="day-card__toggle" type="button" aria-expanded={open} onClick={() => setOpenDate(open ? '' : day.date)}>
+                  {heading}
+                </button>
+              ) : (
+                <div className="day-card__toggle">{heading}</div>
+              )}
               <div className="day-card__body">
                 {MEAL_SLOTS.map((slotId) => {
                   const slot = day.slots[slotId];
@@ -127,22 +164,23 @@ export function PlannerView({
                     </button>
                   );
                 })}
-                <Ledger nutrition={ledger.nutrition} flex={ledger.flex} />
+                <Ledger nutrition={ledger.nutrition} flexNote={dayEatOutNote(day)} />
               </div>
             </article>
           );
         })}
       </div>
+      </div>
 
       <section className="week-totals" aria-label="Weekly totals">
         <header>
           <h3>Week totals</h3>
-          <p>Sums include every logged breakfast, lunch, and snack. Tuesday&apos;s eat-out lunch is omitted. The planned-day average skips that flex day.</p>
+          <p>{weekTotalsNote(plan)}</p>
         </header>
         <div className="week-totals__grid">
           <div className="ledger" aria-label="Logged sum">
             <h4>Logged sum</h4>
-            <p className="planner-muted">Includes Tuesday breakfast and snacks. The eat-out lunch is omitted, so this sum is not six full days.</p>
+            <p className="planner-muted">{loggedSumNote(plan)}</p>
             {LEDGER_KEYS.map((key) => (
               <div className="ledger-row" key={`sum-${key}`}>
                 <div className="ledger-row__label">
@@ -152,7 +190,7 @@ export function PlannerView({
               </div>
             ))}
           </div>
-          <Ledger nutrition={plannedAverage} flex={false} heading="Planned-day average" />
+          <Ledger nutrition={plannedAverage} heading="Planned-day average" />
         </div>
       </section>
 
@@ -165,8 +203,7 @@ export function PlannerView({
           mode={active.mode}
           onClose={() => setActive(undefined)}
           onSwap={(recipeId) => {
-            const suggestion = activeSlot.kind === 'recipe' && activeSlot.suggestion === true;
-            onPlanChange(replaceSlot(plan, active.date, active.slotId, recipeSlot(recipeId, suggestion)));
+            onPlanChange(replaceSlot(plan, active.date, active.slotId, recipeSlot(recipeId)));
             setActive(undefined);
           }}
           onClear={() => {
@@ -185,19 +222,19 @@ export function PlannerView({
 
 function Ledger({
   nutrition,
-  flex,
+  flexNote,
   heading,
   targets = DAILY_TARGETS,
 }: {
   readonly nutrition: Nutrition;
-  readonly flex: boolean;
+  readonly flexNote?: string;
   readonly heading?: string;
   readonly targets?: Readonly<Record<keyof typeof DAILY_TARGETS, number>>;
 }) {
   return (
     <div className="ledger" aria-label={heading ?? 'Day ledger'}>
       {heading && <h4>{heading}</h4>}
-      {flex && <p className="ledger__flex">Eat-out lunch is not in these totals.</p>}
+      {flexNote && <p className="ledger__flex">{flexNote}</p>}
       {ledgerRows(nutrition, targets).map((row) => {
         const tone = ledgerTone(row.actual, row.target);
         const width = Math.max(0, Math.min(100, row.target === 0 ? 0 : (row.actual / row.target) * 100));

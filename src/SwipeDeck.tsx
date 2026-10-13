@@ -112,8 +112,6 @@ export function SwipeDeck({ recipes, index, savedIds, onOpen, onChoose, onPass, 
                 if ((event.target as HTMLElement).closest('a, button')) return;
                 origin.current = { x: event.clientX, y: event.clientY, t: event.timeStamp, pointerId: event.pointerId };
                 axisLock.current = null;
-                event.currentTarget.setPointerCapture(event.pointerId);
-                setDragging(true);
               } : undefined}
               onPointerMove={top ? (event) => {
                 const start = origin.current;
@@ -126,8 +124,13 @@ export function SwipeDeck({ recipes, index, savedIds, onOpen, onChoose, onPass, 
                   if (axisLock.current === 'y') {
                     origin.current = null;
                     setDragging(false);
+                    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                      event.currentTarget.releasePointerCapture(event.pointerId);
+                    }
                     return;
                   }
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDragging(true);
                 }
                 if (axisLock.current !== 'x') return;
                 event.preventDefault();
@@ -148,11 +151,11 @@ export function SwipeDeck({ recipes, index, savedIds, onOpen, onChoose, onPass, 
               onPointerCancel={top ? () => { origin.current = null; axisLock.current = null; setDragging(false); setDx(0); } : undefined}
             >
               <div className="deck-photo">
-                <img src={plateSrc(itemPlate)} alt={top ? itemPlate.alt : ''} draggable={false} />
+                <img src={plateSrc(itemPlate)} alt={top ? itemPlate.alt : ''} draggable={false} loading={top ? 'eager' : 'lazy'} />
                 {top && (
                   <>
-                    <span className="deck-stamp deck-stamp--cook" style={{ opacity: fly === 'right' ? 1 : cookOpacity }}>Like</span>
-                    <span className="deck-stamp deck-stamp--skip" style={{ opacity: fly === 'left' ? 1 : skipOpacity }}>Nope</span>
+                    <span className="deck-stamp deck-stamp--cook" style={{ opacity: fly === 'right' ? 1 : cookOpacity }} aria-hidden="true">Like</span>
+                    <span className="deck-stamp deck-stamp--skip" style={{ opacity: fly === 'left' ? 1 : skipOpacity }} aria-hidden="true">Nope</span>
                   </>
                 )}
               </div>

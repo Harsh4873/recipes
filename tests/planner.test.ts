@@ -5,8 +5,8 @@ import { INGREDIENTS, ingredientById } from '../src/planner/ingredients';
 import { kcalWithinTolerance, nutritionForGrams, perServing, proteinMeetsFloor, sumNutrition } from '../src/planner/macros';
 import { PLANNER_RECIPES, plannerRecipeById } from '../src/planner/recipes';
 import { encodeWeekPlan, parseWeekPlan, readWeekPlan, serializeWeekPlan } from '../src/planner/storage';
-import { MEAL_SLOTS } from '../src/planner/types';
-import { dayLedger, defaultWeekPlan, resolveMeal, weekGrocery } from '../src/planner/week';
+import { MEAL_SLOTS, recipeSlot } from '../src/planner/types';
+import { dayLedger, defaultWeekPlan, formatDayLabel, replaceSlot, resolveMeal, weekGrocery, weekHeading } from '../src/planner/week';
 import { parseRecipe } from '../src/store';
 
 function recipeText(recipe: (typeof PLANNER_RECIPES)[number]): string {
@@ -132,5 +132,19 @@ describe('weekly planner', () => {
     expect(readWeekPlan([parsed])).toEqual(plan);
     expect(parseWeekPlan(serializeWeekPlan(plan))).toEqual(plan);
     expect(containsBlockedDietTerm(parsed.description)).toBe(false);
+  });
+
+  it('labels weekdays from the date and keeps mixed grocery amounts in text', () => {
+    expect(formatDayLabel('2026-10-12', 0)).toEqual({ weekday: 'Monday', monthDay: 'Oct 12' });
+    expect(formatDayLabel('2026-10-13', 6).weekday).toBe('Tuesday');
+    expect(weekHeading(defaultWeekPlan())).toBe('Week of Oct 12');
+
+    const gramsOnly = weekGrocery(defaultWeekPlan()).find((line) => line.name === 'Garlic');
+    expect(gramsOnly?.amountLabel).toMatch(/g this week$/);
+
+    const mixed = replaceSlot(defaultWeekPlan(), '2026-10-12', 'lunch', recipeSlot('starter-recipe:paneer-power-bowl'));
+    const garlic = weekGrocery(mixed).find((line) => line.name === 'Garlic');
+    expect(garlic?.amountLabel.includes('this week')).toBe(false);
+    expect(garlic?.amountLabel).toContain('+');
   });
 });

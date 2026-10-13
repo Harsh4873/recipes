@@ -33,13 +33,17 @@ export function MealDrawer({
   readonly onEatOut: (note: string) => void;
 }) {
   const titleId = useId();
+  const errorId = useId();
   const dialogRef = useRef<HTMLElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const onCloseRef = useRef(onClose);
   const [query, setQuery] = useState('');
   const [note, setNote] = useState(eatOutNote ?? 'Vegetarian order. Macros are flex and stay out of the logged total.');
   const [noteError, setNoteError] = useState('');
   const [panel, setPanel] = useState(mode);
 
   useEffect(() => { setPanel(mode); }, [mode]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -47,21 +51,44 @@ export function MealDrawer({
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     const rootWasInert = appRoot?.inert ?? false;
+    const previousAriaHidden = appRoot?.getAttribute('aria-hidden') ?? null;
+    const focusable = () => dialog
+      ? [...dialog.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+      : [];
+    const focusFirst = () => {
+      const preferred = dialog?.querySelector<HTMLElement>('[data-dialog-initial-focus]');
+      (preferred ?? dialog)?.focus({ preventScroll: true });
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onCloseRef.current(); return; }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      if (event.shiftKey && index <= 0) { event.preventDefault(); items.at(-1)?.focus(); }
+      if (!event.shiftKey && (index < 0 || index === items.length - 1)) { event.preventDefault(); items[0].focus(); }
+    };
     document.body.style.overflow = 'hidden';
     if (appRoot) { appRoot.inert = true; appRoot.setAttribute('aria-hidden', 'true'); }
-    const frame = window.requestAnimationFrame(() => dialog?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
-    };
-    document.addEventListener('keydown', onKeyDown);
+    const frame = window.requestAnimationFrame(focusFirst);
+    document.addEventListener('keydown', onKeyDown, true);
     return () => {
       window.cancelAnimationFrame(frame);
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', onKeyDown);
-      if (appRoot) { appRoot.inert = rootWasInert; appRoot.removeAttribute('aria-hidden'); }
+      document.removeEventListener('keydown', onKeyDown, true);
+      if (appRoot) {
+        appRoot.inert = rootWasInert;
+        if (previousAriaHidden === null) appRoot.removeAttribute('aria-hidden');
+        else appRoot.setAttribute('aria-hidden', previousAriaHidden);
+      }
       if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
     };
-  }, [onClose]);
+  }, []);
+
+  useEffect(() => {
+    if (panel !== 'swap' && panel !== 'eat-out') return;
+    dialogRef.current?.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus({ preventScroll: true });
+  }, [panel]);
 
   const normalized = query.trim().toLowerCase();
   const plannerMatches = useMemo(() => PLANNER_RECIPES.filter((recipe) => {
@@ -95,7 +122,7 @@ export function MealDrawer({
           {panel === 'meal' && !meal && !eatOutNote && <p className="planner-muted">This slot is open. Add a recipe or mark it as eat-out.</p>}
           {panel === 'swap' && (
             <div className="planner-swap">
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search week recipes or the catalog" aria-label="Search recipes" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search week recipes or the catalog" aria-label="Search recipes" data-dialog-initial-focus={panel === 'swap' ? '' : undefined} />
               <ul>
                 {plannerMatches.map((recipe) => (
                   <li key={recipe.id}>
@@ -124,6 +151,7 @@ export function MealDrawer({
                 const nextNote = note.trim() || 'Vegetarian order. Macros are flex and stay out of the logged total.';
                 if (containsBlockedDietTerm(nextNote)) {
                   setNoteError('That note crosses the vegetarian boundary, so it was not saved.');
+                  noteRef.current?.focus();
                   return;
                 }
                 setNoteError('');
@@ -131,9 +159,9 @@ export function MealDrawer({
               }}>
               <label>
                 <span>Note</span>
-                <textarea value={note} onChange={(event) => { setNote(event.target.value); setNoteError(''); }} rows={4} />
+                <textarea ref={noteRef} value={note} onChange={(event) => { setNote(event.target.value); setNoteError(''); }} rows={4} data-dialog-initial-focus={panel === 'eat-out' ? '' : undefined} aria-invalid={noteError ? true : undefined} aria-describedby={noteError ? errorId : undefined} />
               </label>
-              {noteError && <p className="ledger__flex">{noteError}</p>}
+              {noteError && <p className="ledger__flex" id={errorId} role="alert">{noteError}</p>}
               <p className="planner-muted">Eat-out meals are excluded from the day totals. Keep the order vegetarian.</p>
               <button className="primary-button" type="submit">Save eat-out slot</button>
             </form>

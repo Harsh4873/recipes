@@ -69,6 +69,37 @@ describe('substantial meal catalog', () => {
     expect(missing).toEqual([]);
   });
 
+  it('does not name sauces that are missing from the plate, and pinto plates are not titled as white beans', () => {
+    const absentLabels = [
+      { needle: 'greek yogurt', name: 'Plain Greek yogurt' },
+      { needle: 'fresh lemon', name: 'Fresh lemon' },
+      { needle: 'hot sauce', name: 'Hot sauce' },
+      { needle: 'hummus', name: 'Hummus' },
+      { needle: 'salsa', name: 'Salsa' },
+    ];
+    for (const recipe of STARTER_RECIPES) {
+      const method = recipe.steps.join(' ').toLowerCase();
+      const names = new Set(recipe.ingredients.map((ingredient) => ingredient.name.toLowerCase()));
+      for (const label of absentLabels) {
+        if (!names.has(label.name.toLowerCase())) expect(method, `${recipe.title} mentions ${label.name}`).not.toContain(label.needle);
+      }
+      const hasSauce = names.has('salsa') || names.has('hot sauce') || names.has('hummus');
+      if (!hasSauce) expect(method, `${recipe.title} mentions fresh sauces`).not.toContain('fresh sauces');
+      if (!names.has('plain greek yogurt')) expect(method, `${recipe.title} mentions yogurt`).not.toContain('yogurt');
+    }
+    const renamed = [
+      'starter-recipe:scout-tuscan-white-bean-pasta',
+      'starter-recipe:scout-lemon-tofu-white-bean-pasta',
+      'starter-recipe:scout-white-bean-chili',
+    ];
+    expect(STARTER_RECIPES.some((recipe) => /white bean/i.test(recipe.title))).toBe(false);
+    for (const id of renamed) {
+      const recipe = STARTER_RECIPES.find((item) => item.id === id);
+      expect(recipe?.title.toLowerCase()).toContain('pinto');
+      expect(recipe?.ingredients.some((ingredient) => ingredient.productId === 'starter:pinto-beans')).toBe(true);
+    }
+  });
+
   it('offers useful calorie bands without oversized non-soup portions', () => {
     const low = STARTER_RECIPES.filter((recipe) => recipe.nutritionPerServing.calories < 900);
     const middle = STARTER_RECIPES.filter((recipe) => recipe.nutritionPerServing.calories >= 900 && recipe.nutritionPerServing.calories < 1100);

@@ -22,7 +22,11 @@ export function WeekGrocery({
           <article className="grocery-row" key={line.key}>
             <div className="grocery-row__name">
               <h4>{line.name}{line.estimated ? ' · estimated' : ''}</h4>
-              <p>{line.amountLabel}. {line.sourceLabel}. {line.sourceNote}</p>
+              <p>{line.amountLabel}</p>
+              <details className="planner-source">
+                <summary>{line.sourceLabel}</summary>
+                <p>{line.sourceNote}</p>
+              </details>
             </div>
           </article>
         ))}
