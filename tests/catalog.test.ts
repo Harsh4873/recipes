@@ -182,12 +182,70 @@ describe('substantial meal catalog', () => {
     expect(paneer?.provenance.warnings.some((warning) => warning.includes('not interchangeable'))).toBe(true);
   });
 
+  it('keeps generated methods on the same plate as the title', () => {
+    const byId = (id: string) => {
+      const recipe = STARTER_RECIPES.find((item) => item.id === `starter-recipe:${id}`);
+      expect(recipe, id).toBeDefined();
+      return recipe!;
+    };
+    const soup = byId('cheddar-melt-bean-soup');
+    expect(soup.steps.join(' ').toLowerCase()).toMatch(/soup/);
+    expect(soup.steps.join(' ')).not.toMatch(/fairly dry/);
+
+    const burrito = byId('tofu-fajita-burritos');
+    expect(burrito.title).toBe('Tofu fajita burritos');
+    const burritoMethod = burrito.steps.join(' ');
+    expect(burritoMethod.toLowerCase()).not.toMatch(/chipotle/);
+    expect(burritoMethod).toMatch(/basmati rice/i);
+    expect(burritoMethod).not.toMatch(/rice[^.]{0,80}dry skillet/i);
+    expect(burritoMethod).toMatch(/Divide the filling, .+basmati rice.+,\s+and .+cheddar/i);
+    expect(burritoMethod).not.toMatch(/filling and .+ and /);
+
+    const potatoes = byId('buffalo-tofu-potatoes');
+    const potatoMethod = potatoes.steps.join(' ');
+    expect(potatoMethod).toMatch(/2 cm pieces/);
+    expect(potatoMethod).not.toMatch(/Split the fork-tender/);
+
+    const chickpeaPotato = byId('broccoli-cheddar-potato');
+    expect(chickpeaPotato.steps.join(' ')).toMatch(/2 cm pieces/);
+    expect(chickpeaPotato.steps.join(' ')).not.toMatch(/Split the fork-tender/);
+
+    const taco = byId('tempeh-taco-rice');
+    const tacoMethod = taco.steps.join(' ').toLowerCase();
+    expect(tacoMethod).not.toMatch(/\beggs?\b/);
+    expect(tacoMethod).not.toMatch(/cheese/);
+
+    const quesadilla = byId('paneer-pepper-quesadilla');
+    const fillingStep = quesadilla.steps.find((step) => step.startsWith('Cook ')) ?? '';
+    expect(fillingStep).not.toMatch(/tortilla|cheddar|salsa/i);
+    expect(quesadilla.ingredients.some((item) => item.productId === 'starter:garam-masala')).toBe(true);
+    expect(quesadilla.ingredients.some((item) => item.productId === 'starter:taco-seasoning')).toBe(false);
+
+    const hummus = byId('scout-hummus-pasta');
+    expect(hummus.title.toLowerCase()).not.toMatch(/parsley|scallion/);
+    expect(hummus.title.toLowerCase()).toMatch(/onion/);
+    expect(hummus.title.toLowerCase()).toMatch(/garlic/);
+    expect(hummus.steps.join(' ')).not.toMatch(/into the sauce/);
+
+    const wetIds = new Set(['starter:tomato-paste', 'starter:tomato-sauce', 'starter:coconut-milk', 'starter:peanut-butter', 'starter:soy-sauce', 'starter:vegetable-broth']);
+    for (const recipe of STARTER_RECIPES) {
+      if (!recipe.tags.includes('pasta')) continue;
+      const hasSauce = recipe.ingredients.some((item) => item.productId && wetIds.has(item.productId));
+      if (!hasSauce) expect(recipe.steps.join(' '), recipe.title).not.toMatch(/into the sauce/);
+    }
+  });
+
   it('provides complete source macros and a grocery guide for every tracked product', () => {
     expect(STARTER_PRODUCTS).toHaveLength(62);
     for (const product of STARTER_PRODUCTS) {
       expect(product.serving.grams, product.name).toBe(100);
       expect(product.provenance.coreMacrosComplete, product.name).toBe(true);
       expect(groceryGuideForProductId(product.id), product.name).toBeDefined();
+      if (product.provenance.externalId) expect(product.provenance.providerName, product.name).toBe('USDA FoodData Central');
+      else {
+        expect(product.provenance.providerName, product.name).toBe('Typical reference');
+        expect(product.provenance.providerName, product.name).not.toMatch(/USDA/);
+      }
     }
     for (const recipe of STARTER_RECIPES) {
       for (const ingredient of recipe.ingredients) {

@@ -37,7 +37,7 @@
 @container (min-width: 720px) {
   .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@container (min-width: 1080px) {
+@container (min-width: 1480px) {
   .week-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 .day-card { min-width: 0; display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-small); }
@@ -55,13 +55,13 @@
 .ledger h4 { font-size: 12px; }
 .ledger__flex { color: var(--warning); font-size: 11px; line-height: 1.4; }
 .ledger-row { display: grid; gap: 2px; }
-.ledger-row__label { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
-.ledger-row__label strong { color: var(--text); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.ledger-row__label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.ledger-row__label strong { color: var(--text); font-size: 12px; letter-spacing: 0; text-transform: none; }
 .ledger-bar { height: 6px; border-radius: 99px; background: var(--surface-soft); overflow: hidden; }
 .ledger-bar span { display: block; height: 100%; border-radius: inherit; background: var(--green); }
 .ledger-row--under .ledger-bar span { background: var(--saffron); }
 .ledger-row--over .ledger-bar span { background: var(--danger); }
-.ledger-row small { color: var(--text-faint); font-size: 10px; }
+.ledger-row small { color: var(--text-faint); font-size: 12px; }
 .week-totals { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
 .week-totals h3 { font-size: 18px; letter-spacing: -0.03em; }
 .week-totals header p, .planner-muted { margin-top: 6px; color: var(--text-soft); font-size: 12px; line-height: 1.5; }

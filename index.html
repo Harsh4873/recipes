@@ -3,8 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#241910" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#f4efe6" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        try {
+          var theme = 'system';
+          var raw = localStorage.getItem('recipes-state-v1');
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            var stored = parsed && parsed.state && parsed.state.settings && parsed.state.settings.theme;
+            if (stored === 'light' || stored === 'dark' || stored === 'system') theme = stored;
+          }
+          if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+          var dark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var color = document.querySelector('meta[name="theme-color"]');
+          if (color) color.setAttribute('content', dark ? '#14110e' : '#f4efe6');
+          var scheme = document.querySelector('meta[name="color-scheme"]');
+          if (scheme) scheme.setAttribute('content', dark ? 'dark' : 'light');
+        } catch (error) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

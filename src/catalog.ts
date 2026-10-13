@@ -37,14 +37,19 @@ const NUTRIENT_LABELS: Readonly<Record<keyof Nutrition, string>> = {
 
 function starterProvenance(spec: StarterSpec): ProductProvenance {
   const missing = NUTRITION_KEYS.filter((key) => spec.nutrition[key] === undefined);
-  const warnings = ['Typical USDA value per 100 g; compare packaged products with their current label.'];
+  const cited = Boolean(spec.externalId);
+  const warnings = [cited
+    ? 'Typical USDA value per 100 g; compare packaged products with their current label.'
+    : 'Typical reference value per 100 g; compare packaged products with their current label.'];
   if (missing.length > 0) warnings.push(`Reference does not include ${missing.map((key) => NUTRIENT_LABELS[key]).join(', ')}; missing values are displayed as 0.`);
   if (spec.id === 'paneer') {
     warnings.push('This catalog row is USDA FDC 2705740: 299 kcal, 16 g protein, 22.5 g carbohydrate, and 15.5 g fat per 100 g. The week planner uses a separate full-fat estimate: 265 kcal, 18 g protein, 1.2 g carbohydrate, and 20.8 g fat per 100 g. Those two rows are not interchangeable. Verify against the package.');
   }
   return {
-    kind: 'starter', providerName: 'USDA FoodData Central', sourceUrl: USDA_URL,
-    externalId: spec.externalId, quality: missing.length === 0 ? 'complete' : 'partial',
+    kind: 'starter',
+    providerName: cited ? 'USDA FoodData Central' : 'Typical reference',
+    ...(cited ? { sourceUrl: USDA_URL, externalId: spec.externalId } : {}),
+    quality: missing.length === 0 ? 'complete' : 'partial',
     coreMacrosComplete: hasCompleteCoreMacros(spec.nutrition), warnings: Object.freeze(warnings),
   };
 }
@@ -207,8 +212,8 @@ function seasoningItems(spec: MealSpec): IngredientTuple[] {
   if (spec.id === 'ethiopian-red-lentils') return [I('berbere-seasoning', 6)];
   if (spec.id === 'moroccan-chickpea-quinoa' || spec.id === 'chickpea-tagine') return [I('ras-el-hanout', 6)];
   if (spec.id === 'caribbean-tofu-rice-beans') return [I('jerk-seasoning', 6)];
-  if (cuisine.includes('mexican') || cuisine.includes('tex-mex')) return [I('taco-seasoning', 6), ...(spec.title.toLowerCase().includes('spicy') ? [I('hot-sauce', 15)] : [])];
   if (cuisine.includes('indian')) return [I(spec.method === 'curry' || spec.method === 'stew' ? 'curry-powder' : 'garam-masala', 6)];
+  if (cuisine.includes('mexican') || cuisine.includes('tex-mex')) return [I('taco-seasoning', 6), ...(spec.title.toLowerCase().includes('spicy') ? [I('hot-sauce', 15)] : [])];
   if (cuisine.includes('italian') || cuisine.includes('european')) return [I('italian-seasoning', 6), ...(spec.title.toLowerCase().includes('salad') ? [I('lemon', 30)] : [])];
   if (cuisine.includes('mediterranean') || cuisine.includes('greek') || cuisine.includes('middle eastern')) return [I('shawarma-seasoning', 6), I('lemon', 30)];
   if (cuisine.includes('cuban') || cuisine.includes('peruvian') || cuisine.includes('west african')) return [I('smoked-paprika', 6), I('lemon', 30)];
@@ -301,7 +306,9 @@ function described(item: RecipeIngredient): string {
     : `${item.amountLabel} ${name}`;
 }
 function describedList(items: readonly RecipeIngredient[]): string {
-  const values = items.map(described);
+  return clauseList(items.map(described));
+}
+function clauseList(values: readonly string[]): string {
   if (values.length <= 1) return values[0] ?? '';
   if (values.length === 2) return `${values[0]} and ${values[1]}`;
   return `${values.slice(0, -1).join(', ')}, and ${values.at(-1)}`;
@@ -321,8 +328,6 @@ const FLATBREAD_IDS = new Set(['whole-wheat-tortilla', 'fajita-tortillas', 'corn
 const POTATO_IDS = new Set(['potato', 'sweet-potato']);
 const LEGUME_IDS = new Set(['chickpeas', 'black-beans', 'kidney-beans', 'pinto-beans', 'lentils', 'red-lentils', 'chana-dal', 'urad-dal']);
 const COLD_IDS = new Set(['greek-yogurt', 'hummus', 'salsa', 'hot-sauce', 'lemon']);
-const QUESADILLA_HELD_IDS = new Set(['whole-wheat-tortilla', 'fajita-tortillas', 'corn-tortillas', 'naan', 'paratha', 'pita', 'cheddar', 'salsa', 'greek-yogurt', 'lemon', 'hot-sauce']);
-const LOADED_HELD_IDS = new Set(['potato', 'sweet-potato', 'cheddar', 'mozzarella', 'cottage-cheese', 'greek-yogurt', 'salsa', 'lemon', 'hot-sauce']);
 const OVEN_OUT_IDS = new Set(['basmati-rice', 'brown-rice', 'quinoa', 'pasta', 'vegetable-broth', 'coconut-milk', 'hummus', 'salsa', 'greek-yogurt']);
 const WET_IDS = new Set(['tomato-paste', 'tomato-sauce', 'coconut-milk', 'peanut-butter', 'soy-sauce', 'vegetable-broth']);
 const CHEESE_IDS = new Set(['cottage-cheese', 'cheddar', 'mozzarella']);
@@ -375,11 +380,6 @@ function coldFinishPhrase(ingredients: readonly RecipeIngredient[]): string {
   const because = reasons.length > 0 ? `so ${reasons.join(' and ')}` : 'so it stays fresh';
   return `add ${describedList(cold)} only after the hot components leave the heat, ${because}`;
 }
-function exceptClause(ingredients: readonly RecipeIngredient[], ids: ReadonlySet<string>): string {
-  const held = ingredients.filter((item) => ids.has(keyOf(item)));
-  return held.length > 0 ? ` except the ${nameList(held)}` : '';
-}
-
 function coldFinish(ingredients: readonly RecipeIngredient[]): string {
   const phrase = coldFinishPhrase(ingredients);
   return `${phrase[0].toUpperCase()}${phrase.slice(1)}.`;
@@ -387,8 +387,11 @@ function coldFinish(ingredients: readonly RecipeIngredient[]): string {
 
 function specialShapeSteps(spec: MealSpec, ingredients: readonly RecipeIngredient[]): string[] | undefined {
   const title = spec.title.toLowerCase();
-  const all = describedList(ingredients);
   const items = (...ids: string[]) => ingredients.filter((item) => ids.includes(keyOf(item)));
+  const omit = (ids: ReadonlySet<string>) => ingredients.filter((item) => !ids.has(keyOf(item)));
+  const flatbreads = ingredients.filter((item) => FLATBREAD_IDS.has(keyOf(item)));
+  const cheeses = selected(ingredients, CHEESE_IDS);
+  const cold = selected(ingredients, COLD_IDS);
   if (spec.id === 'black-bean-burger-plate') {
     const eggs = ingredients.filter((item) => keyOf(item) === 'eggs');
     return [
@@ -409,21 +412,43 @@ function specialShapeSteps(spec: MealSpec, ingredients: readonly RecipeIngredien
     ];
   }
   if (title.includes('enchilada')) {
+    const sauce = items('tomato-sauce');
+    const salsa = items('salsa');
+    const held = new Set<string>([...FLATBREAD_IDS, ...CHEESE_IDS, 'salsa', 'tomato-sauce', ...COLD_IDS]);
+    const filling = omit(held);
     return [
-      'Heat the oven to 400°F / 205°C and spread the measured Tomato sauce across the bottom of a baking dish.',
+      sauce.length > 0
+        ? `Heat the oven to 400°F / 205°C and spread ${describedList(sauce)} across the bottom of a baking dish.`
+        : 'Heat the oven to 400°F / 205°C and line a baking dish.',
       ...preparationSteps(ingredients),
-      `Cook the filling from ${all} except the Corn tortillas, cheddar, Salsa, and Tomato sauce in a skillet for 6 minutes.`,
-      'Warm the Corn tortillas, divide the hot filling among them, roll tightly, and arrange seam-side down in the Tomato sauce.',
-      'Top with the Vegetarian-enzyme cheddar, bake for 18 to 20 minutes, and spoon on the Salsa only after the dish leaves the oven.',
+      filling.length > 0
+        ? `Cook ${describedList(filling)} in a skillet for 6 minutes, until the filling is hot.`
+        : 'Warm the prepared filling in a skillet for 6 minutes.',
+      flatbreads.length > 0
+        ? `Warm ${describedList(flatbreads)}, divide the hot filling among them, roll tightly, and arrange them seam-side down in the sauce.`
+        : 'Spread the hot filling in the baking dish.',
+      cheeses.length > 0
+        ? `Top with ${describedList(cheeses)} and bake for 18 to 20 minutes until the cheese melts.`
+        : 'Bake for 18 to 20 minutes until the center is steaming.',
+      salsa.length > 0
+        ? `Spoon on ${describedList(salsa)} only after the dish leaves the oven.`
+        : 'Rest the enchiladas for 5 minutes before serving.',
     ];
   }
   if (title.includes('stuffed peppers')) {
+    const peppers = items('bell-pepper');
+    const held = new Set<string>(['bell-pepper', ...CHEESE_IDS, ...COLD_IDS]);
+    const filling = omit(held);
     return [
-      'Heat the oven to 400°F / 205°C; halve the measured Bell pepper, remove the seeds, and bake the halves cut-side up for 10 minutes.',
+      `Heat the oven to 400°F / 205°C; halve ${describedList(peppers)}, remove the seeds, and bake the halves cut-side up for 10 minutes.`,
       ...preparationSteps(ingredients),
-      `Stir together the hot ${all} except the Bell pepper, cheddar, and Salsa to make the filling.`,
-      'Pack the filling into the pepper halves, top with the Vegetarian-enzyme cheddar, and bake for 15 minutes.',
-      'Rest for 5 minutes and spoon the measured Salsa over the stuffed peppers.',
+      `Stir together ${describedList(filling)} to make the filling.`,
+      cheeses.length > 0
+        ? `Pack the filling into the pepper halves, top with ${describedList(cheeses)}, and bake for 15 minutes.`
+        : 'Pack the filling into the pepper halves and bake for 15 minutes.',
+      cold.length > 0
+        ? `Rest for 5 minutes and spoon ${describedList(cold)} over the stuffed peppers.`
+        : 'Rest the stuffed peppers for 5 minutes before serving.',
     ];
   }
   if (title.includes('moussaka')) {
@@ -454,49 +479,99 @@ function specialShapeSteps(spec: MealSpec, ingredients: readonly RecipeIngredien
         `Toss ${describedList(items('chickpeas', 'spinach', 'olive-oil', 'garlic'))} together and serve the warm salad beside the pizza.`,
       ];
     }
+    const naan = items('naan');
+    const topping = ingredients.filter((item) => keyOf(item) !== 'naan');
     return [
-      'Heat the oven to 425°F / 220°C and place the measured Naan on a lined sheet pan.',
+      `Heat the oven to 425°F / 220°C and place ${describedList(naan)} on a lined sheet pan.`,
       ...preparationSteps(ingredients),
-      `Spread and arrange ${all} except the Naan across the naan in an even layer.`,
+      `Spread ${describedList(topping)} across the naan in an even layer.`,
       'Bake the naan pizza for 10 to 12 minutes, until the cheese bubbles and the edges are crisp.',
       'Rest the baked pizza for 2 minutes, then cut it into wedges and serve.',
     ];
   }
   if (title.includes('pita melts')) {
+    const soup = ingredients.some((item) => keyOf(item) === 'vegetable-broth');
+    const held = new Set<string>([...FLATBREAD_IDS, ...CHEESE_IDS]);
+    const body = omit(held);
+    const pocket = flatbreads.length > 0
+      ? `Heat the oven to 425°F / 220°C and split ${describedList(flatbreads)} into pockets.`
+      : 'Heat the oven to 425°F / 220°C.';
+    if (soup) {
+      return [
+        pocket,
+        ...preparationSteps(ingredients),
+        `Simmer ${describedList(body)} for 12 to 15 minutes so the beans stay in a soupy broth.`,
+        cheeses.length > 0
+          ? `Spoon some of the hot beans into the pita pockets, add ${describedList(cheeses)}, and bake for 6 to 8 minutes until the cheese melts.`
+          : 'Spoon some of the hot beans into the pita pockets and bake for 6 to 8 minutes.',
+        'Ladle the remaining tomato bean soup into a bowl and serve it beside the baked pita melts.',
+      ];
+    }
     return [
-      'Heat the oven to 425°F / 220°C and split the measured Whole-wheat pita into pockets.',
+      pocket,
       ...preparationSteps(ingredients),
-      `Cook the filling from ${all} except the pita and cheese in a skillet until hot and fairly dry.`,
-      'Fill the pita pockets, add all measured cheese, and bake for 6 to 8 minutes until melted.',
+      body.length > 0
+        ? `Cook ${describedList(body)} in a skillet until hot and fairly dry, about 6 to 8 minutes.`
+        : 'Cook the measured filling in a skillet until hot and fairly dry, about 6 to 8 minutes.',
+      cheeses.length > 0
+        ? `Fill the pita pockets, add ${describedList(cheeses)}, and bake for 6 to 8 minutes until melted.`
+        : 'Fill the pita pockets and bake for 6 to 8 minutes until hot.',
       'Rest for 2 minutes before serving the crisp pita melts.',
     ];
   }
   if (title.includes('quesadilla') || title.includes('crunchwrap')) {
+    const held = new Set<string>([...FLATBREAD_IDS, ...CHEESE_IDS, ...COLD_IDS]);
+    const filling = omit(held);
+    const parcel = clauseList(['the hot filling', ...cheeses.map(described)]);
     return [
       ...preparationSteps(ingredients),
-      `Cook the filling from ${all}${exceptClause(ingredients, QUESADILLA_HELD_IDS)} for 6 to 8 minutes.`,
-      'Warm the tortillas, divide the hot filling and Vegetarian-enzyme cheddar among them, then fold them closed.',
-      'Toast each folded tortilla in a dry skillet for 2 to 3 minutes per side until crisp and the cheese melts.',
+      filling.length > 0
+        ? `Cook ${describedList(filling)} for 6 to 8 minutes, until the filling is hot.`
+        : 'Warm the prepared filling for 6 to 8 minutes.',
+      flatbreads.length > 0
+        ? `Warm ${describedList(flatbreads)}, divide ${parcel} among them, then fold them closed.`
+        : `Divide ${parcel} into portions.`,
+      cheeses.length > 0
+        ? 'Toast each folded tortilla in a dry skillet for 2 to 3 minutes per side until crisp and the cheese melts.'
+        : 'Toast each folded tortilla in a dry skillet for 2 to 3 minutes per side until crisp.',
       coldFinish(ingredients),
     ];
   }
-  if (title.includes('taco') && ingredients.some((item) => FLATBREAD_IDS.has(keyOf(item)))) {
+  if (title.includes('taco') && flatbreads.length > 0) {
     const eggs = items('eggs');
+    const grains = selected(ingredients, GRAIN_IDS);
+    const held = new Set<string>([...FLATBREAD_IDS, ...GRAIN_IDS, 'eggs', ...CHEESE_IDS, ...COLD_IDS]);
+    const filling = omit(held);
+    const eggSentence = eggStep(ingredients, spec.title);
+    const withEggs = eggs.length > 0 ? ` and ${describedList(eggs)}` : '';
+    const withCheese = cheeses.length > 0 ? `, then add ${describedList(cheeses)} over low heat so it melts` : '';
+    const finish = coldFinishPhrase(ingredients);
     return [
       ...preparationSteps(ingredients),
-      ...(eggStep(ingredients, spec.title) ? [eggStep(ingredients, spec.title)!] : []),
-      `Cook the filling from ${all} except the tortillas, cooked grain, fully cooked eggs, cheese, and cool sauces for 6 to 8 minutes.`,
-      `Warm ${describedList(ingredients.filter((item) => FLATBREAD_IDS.has(keyOf(item))))} in a dry skillet for 20 to 30 seconds per side.`,
-      `Fill the warm tortillas with the hot filling${eggs.length > 0 ? ` and ${describedList(eggs)}` : ''}; add any measured cheese over low heat so it melts.`,
-      `Serve any ${describedList(ingredients.filter((item) => GRAIN_IDS.has(keyOf(item)))) || 'remaining hot filling'} beside the tacos, and ${coldFinishPhrase(ingredients)}.`,
+      ...(eggSentence ? [eggSentence] : []),
+      filling.length > 0
+        ? `Cook ${describedList(filling)} for 6 to 8 minutes, until the filling is hot.`
+        : 'Warm the prepared filling for 6 to 8 minutes.',
+      `Warm ${describedList(flatbreads)} in a dry skillet for 20 to 30 seconds per side.`,
+      `Fill the warm tortillas with the hot filling${withEggs}${withCheese}.`,
+      grains.length > 0
+        ? `Serve ${describedList(grains)} beside the tacos, and ${finish}.`
+        : coldFinish(ingredients),
     ];
   }
   if (title.includes('loaded potato') || title.includes('chickpea potato')) {
+    const potatoes = selected(ingredients, POTATO_IDS);
+    const held = new Set<string>([...POTATO_IDS, ...CHEESE_IDS, ...COLD_IDS]);
+    const topping = omit(held);
     return [
       ...preparationSteps(ingredients),
-      `Cook every hot topping from ${all}${exceptClause(ingredients, LOADED_HELD_IDS)} in a skillet until steaming.`,
-      'Split the fork-tender Potato, fluff its center, and pile in the hot topping.',
-      'Add the Vegetarian-enzyme cheddar and cover for 2 minutes so it melts.',
+      topping.length > 0
+        ? `Cook ${describedList(topping)} in a skillet until steaming.`
+        : 'Warm the prepared topping in a skillet until steaming.',
+      `Pile that hot topping over the fork-tender ${describedList(potatoes)}.`,
+      cheeses.length > 0
+        ? `Add ${describedList(cheeses)} and cover for 2 minutes so it melts.`
+        : 'Cover the potatoes for 2 minutes, then serve.',
       coldFinish(ingredients),
     ];
   }
@@ -536,16 +611,22 @@ function methodSteps(spec: MealSpec, ingredients: readonly RecipeIngredient[]): 
     steps.push('Bake for 18 to 22 minutes until the center is steaming and the cheese is melted.');
     steps.push(coldFinish(ingredients));
   } else if (spec.method === 'wrap') {
-    steps.push(`Cook ${describedList(hot)} in a skillet for 6 to 8 minutes, until the filling is hot and fairly dry.`);
+    const flatbreads = bases.filter((item) => FLATBREAD_IDS.has(keyOf(item)));
+    const servedWithWrap = bases.filter((item) => !FLATBREAD_IDS.has(keyOf(item)));
+    if (hot.length > 0) steps.push(`Cook ${describedList(hot)} in a skillet for 6 to 8 minutes, until the filling is hot and fairly dry.`);
     if (wet.length > 0) steps.push(`Stir ${describedList(wet)} into the filling and cook for 3 minutes, until the excess moisture evaporates.`);
-    steps.push(`Warm ${describedList(bases)} in a dry skillet for 20 to 30 seconds per side.`);
+    if (flatbreads.length > 0) steps.push(`Warm ${describedList(flatbreads)} in a dry skillet for 20 to 30 seconds per side.`);
     if (cold.length > 0) steps.push(coldFinish(ingredients));
-    const additions = [...cheese, ...eggs];
-    steps.push(`Divide the filling${additions.length > 0 ? ` and ${describedList(additions)}` : ''} among the warm flatbreads, then fold or roll tightly.`);
+    const additions = [...servedWithWrap, ...cheese, ...eggs];
+    const parcel = clauseList(['the filling', ...additions.map(described)]);
+    steps.push(flatbreads.length > 0
+      ? `Divide ${parcel} among the warm flatbreads, then fold or roll tightly.`
+      : `Plate ${parcel} and serve while it is hot.`);
   } else if (spec.method === 'pasta') {
     steps.push(`Cook ${describedList(hot)} in a wide skillet for 6 minutes, until the solid ingredients are hot.`);
     if (wet.length > 0) steps.push(`Add ${describedList(wet)} and simmer for 5 minutes to make the sauce.`);
-    steps.push(`Fold the prepared cooked portion of ${describedList(bases)} into the sauce and reheat for 3 to 4 minutes; do not boil the cooked portion again.`);
+    const pastaSauce = wet.length > 0 ? 'sauce' : 'skillet';
+    steps.push(`Fold the prepared cooked portion of ${describedList(bases)} into the ${pastaSauce} and reheat for 3 to 4 minutes; do not boil the cooked portion again.`);
     if (cheese.length > 0) steps.push(`Turn the heat to low and fold in ${describedList(cheese)} until creamy or melted.`);
     steps.push(coldFinish(ingredients));
   } else if (spec.method === 'curry' || spec.method === 'stew') {
@@ -603,7 +684,7 @@ const MEAL_SPECS: readonly MealSpec[] = [
 
   // Mexican and Tex-Mex
   M('black-bean-burrito-bowl', 'Black bean burrito bowl', 'Mexican-inspired', 'Black beans', 'bowl', 12, 18, [I('black-beans', 300), I('basmati-rice', 280), I('cheddar', 45), I('salsa', 140), I('bell-pepper', 120), I('onion', 80), I('olive-oil', 10)]),
-  M('tofu-fajita-burritos', 'Chipotle tofu fajita burritos', 'Tex-Mex', 'Tofu', 'wrap', 14, 20, [I('tofu-firm', 260), I('whole-wheat-tortilla', 112), I('basmati-rice', 160), I('cheddar', 35), I('salsa', 120), I('bell-pepper', 160), I('onion', 100), I('olive-oil', 7)]),
+  M('tofu-fajita-burritos', 'Tofu fajita burritos', 'Tex-Mex', 'Tofu', 'wrap', 14, 20, [I('tofu-firm', 260), I('whole-wheat-tortilla', 112), I('basmati-rice', 160), I('cheddar', 35), I('salsa', 120), I('bell-pepper', 160), I('onion', 100), I('olive-oil', 7)]),
   M('sweet-potato-enchiladas', 'Sweet potato black bean enchilada plate', 'Mexican-inspired', 'Black beans', 'bake', 15, 28, [I('black-beans', 250), I('sweet-potato', 240), I('corn-tortillas', 156), I('cheddar', 55), I('tomato-sauce', 180), I('salsa', 100), I('onion', 80)]),
   M('paneer-pepper-quesadilla', 'Paneer pepper quesadilla plate', 'Indian-Mexican', 'Paneer', 'skillet', 12, 18, [I('paneer', 170), I('whole-wheat-tortilla', 112), I('cheddar', 35), I('bell-pepper', 150), I('salsa', 120), I('onion', 80), I('olive-oil', 7)]),
   M('tempeh-taco-rice', 'Tempeh taco rice plate', 'Tex-Mex', 'Tempeh', 'skillet', 12, 18, [I('tempeh', 210), I('corn-tortillas', 104), I('basmati-rice', 220), I('salsa', 120), I('greek-yogurt', 100), I('bell-pepper', 120), I('olive-oil', 7)]),
@@ -723,7 +804,7 @@ const MEAL_SPECS: readonly MealSpec[] = [
   M('scout-cottage-caprese-bowl', 'Burst tomato cottage cheese caprese bowl', 'Italian-inspired', 'Cottage cheese', 'bowl', 10, 14, [I('cottage-cheese', 300), I('mozzarella', 80), I('tomato', 220), I('pita', 120), I('spinach', 100), I('olive-oil', 14), I('garlic', 6)]),
   M('scout-lentil-baked-ziti', 'Lentil baked ziti', 'Italian-inspired', 'Brown lentils', 'bake', 15, 30, [I('pasta', 300), I('lentils', 260), I('tomato-sauce', 260), I('mozzarella', 90), I('spinach', 120), I('onion', 80), I('olive-oil', 10), I('garlic', 9)]),
   M('scout-smoky-black-bean-soup', 'Smoky black bean soup rice plate', 'Cuban-inspired', 'Black beans', 'stew', 10, 25, [I('black-beans', 320), I('vegetable-broth', 300), I('basmati-rice', 260), I('onion', 120), I('tomato', 150), I('bell-pepper', 100), I('olive-oil', 14), I('garlic', 9)]),
-  M('scout-hummus-pasta', 'Parsley scallion hummus pasta', 'Mediterranean', 'Hummus', 'pasta', 10, 18, [I('pasta', 320), I('hummus', 200), I('spinach', 140), I('onion', 100), I('chickpeas', 180), I('lemon', 30), I('olive-oil', 10), I('garlic', 6)]),
+  M('scout-hummus-pasta', 'Onion and garlic hummus pasta', 'Mediterranean', 'Hummus', 'pasta', 10, 18, [I('pasta', 320), I('hummus', 200), I('spinach', 140), I('onion', 100), I('chickpeas', 180), I('lemon', 30), I('olive-oil', 10), I('garlic', 6)]),
   M('scout-dal-tadka-rice', 'Dal tadka rice plate', 'Indian', 'Brown lentils', 'stew', 10, 28, [I('lentils', 320), I('basmati-rice', 280), I('tomato', 150), I('spinach', 140), I('onion', 100), I('greek-yogurt', 140), I('olive-oil', 14), I('garlic', 6), I('ginger', 10)]),
   M('scout-white-bean-chili', 'Creamy pinto bean chili plate', 'Tex-Mex', 'Pinto beans', 'stew', 12, 28, [I('pinto-beans', 320), I('vegetable-broth', 280), I('bell-pepper', 140), I('onion', 120), I('tomato-sauce', 200), I('peanut-butter', 32), I('basmati-rice', 220), I('olive-oil', 10), I('garlic', 9)]),
 ];

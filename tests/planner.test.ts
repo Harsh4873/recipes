@@ -147,7 +147,7 @@ describe('weekly planner', () => {
     expect(garlic?.amountLabel.includes('this week')).toBe(false);
     expect(garlic?.amountLabel).toContain('+');
     expect(garlic?.sourceNote).toContain('same snapshot as the recipe library');
-    expect(garlic?.sourceNote).toContain('Typical USDA value per 100 g');
+    expect(garlic?.sourceNote).toContain('Typical reference value per 100 g');
 
     const estimated = estimatedLoggedCalories(defaultWeekPlan());
     const logged = sumLedgers(weekLedgers(defaultWeekPlan())).calories;

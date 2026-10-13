@@ -1,4 +1,4 @@
-import type { Nutrition, Product, ProductSnapshot, RecipeIngredient } from './model';
+import type { Nutrition, Product, ProductSnapshot, Recipe, RecipeIngredient } from './model';
 
 export const ZERO_NUTRITION: Nutrition = Object.freeze({
   calories: 0,
@@ -105,6 +105,18 @@ export function recipeNutrition(
 
 export function proteinDensity(nutrition: Nutrition): number {
   return nutrition.calories > 0 ? nutrition.proteinG / nutrition.calories * 100 : 0;
+}
+
+export function partialReferenceNotes(recipe: Recipe): string[] {
+  const notes: string[] = [];
+  for (const ingredient of recipe.ingredients) {
+    const provenance = ingredient.snapshot?.provenance;
+    if (provenance?.quality !== 'partial') continue;
+    for (const warning of provenance.warnings) {
+      if (warning.includes('displayed as 0') || warning.includes('not interchangeable')) notes.push(`${ingredient.name}: ${warning}`);
+    }
+  }
+  return notes;
 }
 
 export function macroDistance(

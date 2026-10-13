@@ -1,6 +1,7 @@
 import { Heart, RotateCcw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Recipe } from './model';
+import { partialReferenceNotes } from './nutrition';
 import { plateCredit, plateForRecipe, plateSrc } from './plates';
 import { swipeOutcome } from './swipe';
 
@@ -71,6 +72,7 @@ export function SwipeDeck({ recipes, index, savedIds, onOpen, onChoose, onPass, 
   }
 
   const upcoming = recipes.slice(index, index + 3);
+  const catalogNote = partialReferenceNotes(recipe).find((note) => note.includes('not interchangeable'));
   const cookOpacity = Math.min(1, Math.max(0, dx / 90));
   const skipOpacity = Math.min(1, Math.max(0, -dx / 90));
   const saved = savedIds.has(recipe.id);
@@ -164,6 +166,7 @@ export function SwipeDeck({ recipes, index, savedIds, onOpen, onChoose, onPass, 
                   <p className="deck-card__meta">{item.cuisine} · {item.tags[2] ?? 'vegetarian'} · {item.prepMinutes + item.cookMinutes} min</p>
                   <h2>{item.title}</h2>
                   <p className="deck-card__macros">{formatNumber(item.nutritionPerServing.calories)} kcal · {formatNumber(item.nutritionPerServing.proteinG)}g protein</p>
+                  {catalogNote && <p className="deck-card__note">{catalogNote}</p>}
                   <a href={itemPlate.source} target="_blank" rel="noreferrer" title={`${itemPlate.artist}, ${itemPlate.license}`}>{plateCredit(itemPlate)}</a>
                   <button type="button" className="deck-details" onClick={() => onOpen(item)}>Open recipe</button>
                   {saved ? <p className="deck-kept">Already in Saved</p> : null}

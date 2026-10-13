@@ -292,7 +292,7 @@ function makeTabId(): string {
 }
 
 export function useRecipesSync(store: RecipesStore): RecipesSync {
-  const [status, setStatus] = useState<RecipesSyncStatus>(() => online() ? 'syncing' : 'offline');
+  const [status, setStatus] = useState<RecipesSyncStatus>(() => online() ? 'signed-out' : 'offline');
   const [user, setUser] = useState<User | null>(null);
   const [vaultId, setVaultId] = useState<string>();
   const [lastSyncedAt, setLastSyncedAt] = useState<string>();

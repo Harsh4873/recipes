@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Nutrition } from '../model';
 import { DAILY_TARGETS, LEDGER_KEYS, LEDGER_LABELS, LEDGER_UNITS, ledgerTone } from './macros';
 import { MealDrawer } from './MealDrawer';
@@ -34,21 +34,36 @@ function formatNumber(value: number, digits = 0): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(value);
 }
 
-function useNarrowDays(): boolean {
+function useContainerNarrow(maxWidth: number): readonly [boolean, (node: HTMLDivElement | null) => void] {
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   const [narrow, setNarrow] = useState(() => (
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(max-width: 720px)').matches
+      ? window.matchMedia(`(max-width: ${maxWidth - 1}px)`).matches
       : false
   ));
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return undefined;
-    const query = window.matchMedia('(max-width: 720px)');
-    const apply = () => setNarrow(query.matches);
-    apply();
-    query.addEventListener('change', apply);
-    return () => query.removeEventListener('change', apply);
-  }, []);
-  return narrow;
+  const apply = useCallback((width: number) => {
+    if (width <= 0) return;
+    // Stay collapsed a little past the breakpoint so a scrollbar cannot flip the week open and shut.
+    setNarrow((current) => (current ? width < maxWidth + 16 : width < maxWidth));
+  }, [maxWidth]);
+  const setNode = useCallback((node: HTMLDivElement | null) => {
+    nodeRef.current = node;
+    if (!node) return;
+    apply(node.getBoundingClientRect().width);
+  }, [apply]);
+  useLayoutEffect(() => {
+    const node = nodeRef.current;
+    if (!node) return undefined;
+    apply(node.getBoundingClientRect().width);
+    if (typeof ResizeObserver !== 'function') return undefined;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? node.getBoundingClientRect().width;
+      apply(width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [apply]);
+  return [narrow, setNode];
 }
 
 function signed(value: number, digits = 0): string {
@@ -77,7 +92,7 @@ export function PlannerView({
   const estimatedCalories = useMemo(() => estimatedLoggedCalories(plan), [plan]);
   const [openDate, setOpenDate] = useState(plan.days[0]?.date ?? '');
   const [active, setActive] = useState<{ date: string; slotId: MealSlotId; mode: 'meal' | 'swap' | 'eat-out' }>();
-  const narrowDays = useNarrowDays();
+  const [narrowDays, setWeekFrame] = useContainerNarrow(720);
 
   const activeDay = plan.days.find((day) => day.date === active?.date);
   const activeSlot = active && activeDay ? activeDay.slots[active.slotId] : undefined;
@@ -114,7 +129,7 @@ export function PlannerView({
         {estimatedCalories > 0 && <p className="planner-sticky__note">{formatNumber(estimatedCalories)} kcal of the logged total comes from ingredients marked estimated.</p>}
       </section>
 
-      <div className="week-grid-frame">
+      <div className="week-grid-frame" ref={setWeekFrame}>
       <div className="week-grid">
         {plan.days.map((day, index) => {
           const ledger = ledgers[index];
