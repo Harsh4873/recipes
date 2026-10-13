@@ -34,6 +34,12 @@ describe('strict vegetarian gate', () => {
       'hot dog buns with hot dogs',
       'surimi sticks',
       'caviar toast',
+      'worcestershire sauce',
+      'vegetarian worcestershire',
+      'dashi',
+      'nam pla',
+      'nampla',
+      'suet',
     ];
     for (const name of blocked) {
       expect(classifyVegetarian({ name }).status, name).toBe('blocked');

@@ -23,6 +23,7 @@ import {
   replaceSlot,
   resolveMeal,
   sumLedgers,
+  estimatedLoggedCalories,
   weekHeading,
   weekLedgers,
   weekTotalsNote,
@@ -73,6 +74,7 @@ export function PlannerView({
     () => averageLedger(sumLedgers(plannedLedgers), plannedLedgers.length),
     [plannedLedgers],
   );
+  const estimatedCalories = useMemo(() => estimatedLoggedCalories(plan), [plan]);
   const [openDate, setOpenDate] = useState(plan.days[0]?.date ?? '');
   const [active, setActive] = useState<{ date: string; slotId: MealSlotId; mode: 'meal' | 'swap' | 'eat-out' }>();
   const narrowDays = useNarrowDays();
@@ -109,6 +111,7 @@ export function PlannerView({
         <div><span>Protein</span><strong>{formatNumber(weekTotal.proteinG, 0)} g</strong></div>
         <div><span>Planned-day avg</span><strong>{formatNumber(plannedAverage.calories)} kcal</strong></div>
         <div><span>Avg protein</span><strong>{formatNumber(plannedAverage.proteinG, 0)} g</strong></div>
+        {estimatedCalories > 0 && <p className="planner-sticky__note">{formatNumber(estimatedCalories)} kcal of the logged total comes from ingredients marked estimated.</p>}
       </section>
 
       <div className="week-grid-frame">
@@ -175,7 +178,7 @@ export function PlannerView({
       <section className="week-totals" aria-label="Weekly totals">
         <header>
           <h3>Week totals</h3>
-          <p>{weekTotalsNote(plan)}</p>
+          <p>{weekTotalsNote(plan)}{estimatedCalories > 0 ? ` ${formatNumber(estimatedCalories)} kcal of this logged sum comes from ingredients marked estimated.` : ''}</p>
         </header>
         <div className="week-totals__grid">
           <div className="ledger" aria-label="Logged sum">

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'recipes-shell-';
-const CACHE_NAME = `${CACHE_PREFIX}v2`;
+const CACHE_NAME = `${CACHE_PREFIX}v3`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -19,6 +19,17 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function remember(request, response) {
+  if (!response.ok || response.type !== 'basic' || response.redirected) return;
+  let copy;
+  try {
+    copy = response.clone();
+  } catch {
+    return;
+  }
+  void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -26,10 +37,27 @@ self.addEventListener('fetch', (event) => {
   const scopePath = new URL(self.registration.scope).pathname;
   if (url.origin !== self.location.origin || !url.pathname.startsWith(scopePath)) return;
 
+  if (url.pathname.endsWith('/sw.js')) {
+    event.respondWith(fetch(request.url, { cache: 'no-store', credentials: 'same-origin' }));
+    return;
+  }
+
+  if (url.pathname.endsWith('/manifest.webmanifest')) {
+    event.respondWith(
+      fetch(request.url, { cache: 'no-store', credentials: 'same-origin' })
+        .then((response) => {
+          remember(request, response);
+          return response;
+        })
+        .catch(async () => (await caches.match(request)) ?? new Response('', { status: 504 })),
+    );
+    return;
+  }
+
   if (/\/plates\/[^/]+\.(?:jpe?g|png|webp)$/i.test(url.pathname)) {
     const cachePromise = caches.open(CACHE_NAME);
     const networkPromise = fetch(request).then(async (response) => {
-      if (response.ok && response.type === 'basic') {
+      if (response.ok && response.type === 'basic' && !response.redirected) {
         const cache = await cachePromise.catch(() => undefined);
         if (cache) await cache.put(request, response.clone()).catch(() => undefined);
       }
@@ -49,8 +77,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          remember(request, response);
           return response;
         })
         .catch(async () => (await caches.match(request)) ?? caches.match(self.registration.scope)),
@@ -59,12 +86,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => cached ?? fetch(request).then((response) => {
-      if (response.ok && response.type === 'basic') {
-        const copy = response.clone();
-        void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-      }
-      return response;
-    })),
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        remember(request, response);
+        return response;
+      });
+    }),
   );
 });

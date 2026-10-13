@@ -39,6 +39,9 @@ function starterProvenance(spec: StarterSpec): ProductProvenance {
   const missing = NUTRITION_KEYS.filter((key) => spec.nutrition[key] === undefined);
   const warnings = ['Typical USDA value per 100 g; compare packaged products with their current label.'];
   if (missing.length > 0) warnings.push(`Reference does not include ${missing.map((key) => NUTRIENT_LABELS[key]).join(', ')}; missing values are displayed as 0.`);
+  if (spec.id === 'paneer') {
+    warnings.push('This catalog row is USDA FDC 2705740: 299 kcal, 16 g protein, 22.5 g carbohydrate, and 15.5 g fat per 100 g. The week planner uses a separate full-fat estimate: 265 kcal, 18 g protein, 1.2 g carbohydrate, and 20.8 g fat per 100 g. Those two rows are not interchangeable. Verify against the package.');
+  }
   return {
     kind: 'starter', providerName: 'USDA FoodData Central', sourceUrl: USDA_URL,
     externalId: spec.externalId, quality: missing.length === 0 ? 'complete' : 'partial',
@@ -325,6 +328,14 @@ const WET_IDS = new Set(['tomato-paste', 'tomato-sauce', 'coconut-milk', 'peanut
 const CHEESE_IDS = new Set(['cottage-cheese', 'cheddar', 'mozzarella']);
 const ROASTABLE_IDS = new Set(['tofu-firm', 'paneer', 'tempeh', 'seitan', 'chickpeas', 'broccoli', 'mixed-vegetables', 'spinach', 'green-peas', 'onion', 'bell-pepper', 'mushrooms', 'garlic', 'ginger', 'tomato', 'potato', 'sweet-potato']);
 
+function legumePreparation(legumes: readonly RecipeIngredient[]): string {
+  const listed = describedList(legumes);
+  const kidney = legumes.some((item) => keyOf(item) === 'kidney-beans')
+    ? ' Dry kidney beans need a separate cook before this recipe: soak at least 5 hours, discard the soaking water, briskly boil in fresh water for at least 10 minutes, then simmer until tender. Canned kidney beans are already fully cooked, so drain, rinse, and heat them through.'
+    : '';
+  return `Treat ${listed} as a cooked, drained weight, matching the plate total. If the package is canned or already prepared, including vegetarian refried beans, drain and rinse when there is canning liquid, then heat through. If the package is dry, cook it by the package directions until you have this cooked amount before the rest of the recipe starts. Do not measure the listed grams as dry weight.${kidney}`;
+}
+
 function preparationSteps(ingredients: readonly RecipeIngredient[]): string[] {
   const steps: string[] = [];
   const grains = selected(ingredients, GRAIN_IDS);
@@ -337,7 +348,7 @@ function preparationSteps(ingredients: readonly RecipeIngredient[]): string[] {
   if (grains.length > 0) steps.push(`Use ${describedList(grains)} as the cooked target: if starting from a dry package, follow its directions to produce that cooked amount; if using pre-cooked food, reheat it covered for 4 to 5 minutes. Do not boil the listed cooked portion again.`);
   if (dryPasta.length > 0) steps.push(`Boil the ${describedList(dryPasta)} in water according to its package timing, then drain it.`);
   if (potatoes.length > 0) steps.push(`Cut the ${describedList(potatoes)} into 2 cm pieces and microwave them covered with a splash of water for 6 to 9 minutes, until fork-tender.`);
-  if (legumes.length > 0) steps.push(`Drain and rinse the ${describedList(legumes)} if canned; these beans and lentils are already cooked and only need to be heated through.`);
+  if (legumes.length > 0) steps.push(legumePreparation(legumes));
   if (tofu.length > 0) steps.push(`Press the ${describedList(tofu)} dry for 10 minutes, then cut it into 2 cm cubes.`);
   if (cutProteins.length > 0) steps.push(`Cut the ${describedList(cutProteins)} into even bite-size pieces.`);
   if (edamame.length > 0) steps.push(`Boil the ${describedList(edamame)} for 4 to 5 minutes until hot and tender, then drain it.`);

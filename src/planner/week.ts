@@ -181,6 +181,24 @@ export function sumLedgers(ledgers: readonly DayLedger[]): Nutrition {
   return ledgers.reduce((total, ledger) => addNutrition(total, ledger.nutrition), ZERO_NUTRITION);
 }
 
+/** Sum of calories already stored on planner ingredients flagged estimated. Catalog swaps are not flagged. */
+export function estimatedLoggedCalories(plan: WeekPlan): number {
+  let calories = 0;
+  for (const dayPlan of plan.days) {
+    for (const slotId of MEAL_SLOTS) {
+      const slot = dayPlan.slots[slotId];
+      if (slot.kind !== 'recipe') continue;
+      const recipe = plannerRecipeById(slot.recipeId);
+      if (!recipe) continue;
+      const scale = 1 / Math.max(1, recipe.servings);
+      for (const ingredient of recipe.ingredients) {
+        if (ingredient.estimated) calories += ingredient.nutrition.calories * scale;
+      }
+    }
+  }
+  return calories;
+}
+
 export function averageLedger(total: Nutrition, days: number): Nutrition {
   const divisor = Math.max(1, days);
   return {
@@ -205,7 +223,7 @@ export interface GroceryLine {
 }
 
 export function weekGrocery(plan: WeekPlan): GroceryLine[] {
-  const grouped = new Map<string, { name: string; labels: string[]; grams: number; weighed: boolean; estimated: boolean; sourceLabel: string; sourceNote: string }>();
+  const grouped = new Map<string, { name: string; labels: string[]; grams: number; weighed: boolean; estimated: boolean; sourceLabels: string[]; sourceNotes: string[] }>();
   for (const dayPlan of plan.days) {
     for (const slotId of MEAL_SLOTS) {
       const slot = dayPlan.slots[slotId];
@@ -220,14 +238,16 @@ export function weekGrocery(plan: WeekPlan): GroceryLine[] {
           labels: [],
           grams: 0,
           weighed: true,
-          estimated: ingredient.estimated,
-          sourceLabel: ingredient.sourceLabel,
-          sourceNote: ingredient.sourceNote,
+          estimated: false,
+          sourceLabels: [],
+          sourceNotes: [],
         };
         current.labels.push(ingredient.amountLabel);
         if (hasGrams) current.grams += ingredient.grams ?? 0;
         else current.weighed = false;
         current.estimated = current.estimated || ingredient.estimated;
+        if (ingredient.sourceLabel && !current.sourceLabels.includes(ingredient.sourceLabel)) current.sourceLabels.push(ingredient.sourceLabel);
+        if (ingredient.sourceNote && !current.sourceNotes.includes(ingredient.sourceNote)) current.sourceNotes.push(ingredient.sourceNote);
         grouped.set(key, current);
       }
     }
@@ -238,8 +258,8 @@ export function weekGrocery(plan: WeekPlan): GroceryLine[] {
       name: item.name,
       amountLabel: item.weighed && item.grams > 0 ? `${trimGrams(item.grams)} g this week` : item.labels.join(' + '),
       estimated: item.estimated,
-      sourceLabel: item.sourceLabel,
-      sourceNote: item.sourceNote,
+      sourceLabel: item.sourceLabels.join('; '),
+      sourceNote: item.sourceNotes.join(' '),
     }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }

@@ -7,6 +7,10 @@ import { PLANNER_RECIPES } from './recipes';
 import { MEAL_SLOT_LABELS, type MealSlotId } from './types';
 import type { ResolvedMeal } from './week';
 
+function searchableRecipeText(recipe: { readonly title: string; readonly cuisine: string; readonly tags: readonly string[]; readonly ingredients: readonly { readonly name: string }[] }): string {
+  return `${recipe.title} ${recipe.cuisine} ${recipe.tags.join(' ')} ${recipe.ingredients.map((ingredient) => ingredient.name).join(' ')}`.toLowerCase();
+}
+
 function formatNumber(value: number, digits = 0): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits === 0 ? 0 : 0 }).format(value);
 }
@@ -93,12 +97,14 @@ export function MealDrawer({
   const normalized = query.trim().toLowerCase();
   const plannerMatches = useMemo(() => PLANNER_RECIPES.filter((recipe) => {
     if (!normalized) return true;
-    return `${recipe.title} ${recipe.cuisine} ${recipe.tags.join(' ')}`.toLowerCase().includes(normalized);
+    return searchableRecipeText(recipe).includes(normalized);
   }), [normalized]);
-  const catalogMatches = useMemo(() => STARTER_RECIPES.filter((recipe) => {
-    if (!normalized) return false;
-    return `${recipe.title} ${recipe.cuisine} ${recipe.tags.join(' ')}`.toLowerCase().includes(normalized);
-  }).slice(0, 20), [normalized]);
+  const catalogPool = useMemo(() => {
+    if (!normalized) return [];
+    return STARTER_RECIPES.filter((recipe) => searchableRecipeText(recipe).includes(normalized));
+  }, [normalized]);
+  const catalogMatches = catalogPool.slice(0, 20);
+  const catalogHidden = catalogPool.length - catalogMatches.length;
 
   return createPortal(
     <div className="dialog-backdrop" role="presentation" onClick={(event) => event.target === event.currentTarget && onClose()}>
@@ -142,6 +148,7 @@ export function MealDrawer({
                 ))}
               </ul>
               {normalized && catalogMatches.length === 0 && plannerMatches.length === 0 && <p className="planner-muted">No recipes match that search.</p>}
+              {catalogHidden > 0 && <p className="planner-muted">{catalogHidden} more catalog plates match. Narrow the search to see them.</p>}
               {!normalized && <p className="planner-muted">Type to search the 100 substantial catalog meals. Those plates are 800 kcal and up, so check the day ledger after a swap.</p>}
             </div>
           )}

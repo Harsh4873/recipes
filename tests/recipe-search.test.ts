@@ -47,6 +47,32 @@ describe('recipe catalog search', () => {
     expect(STARTER_RECIPES.map((recipe) => recipe.id)).toEqual(original);
   });
 
+  it('matches the tagged main protein rather than every ingredient on the plate', () => {
+    const cheese = filterAndSortRecipes(STARTER_RECIPES, { proteins: ['Cheese'] });
+    expect(cheese.length).toBeGreaterThan(0);
+    expect(cheese.every((recipe) => recipe.tags.includes('Cheddar') || recipe.tags.includes('Mozzarella') || recipe.tags.includes('Cottage cheese'))).toBe(true);
+    expect(cheese.some((recipe) => recipe.id === 'starter-recipe:lentil-taco-bowl')).toBe(false);
+
+    const beans = filterAndSortRecipes(STARTER_RECIPES, { proteins: ['Beans'] });
+    expect(beans.some((recipe) => recipe.id === 'starter-recipe:caribbean-tofu-rice-beans')).toBe(false);
+    expect(beans.some((recipe) => recipe.id === 'starter-recipe:black-bean-burrito-bowl')).toBe(true);
+
+    const eggs = filterAndSortRecipes(STARTER_RECIPES, { proteins: ['Eggs'] });
+    expect(eggs.every((recipe) => recipe.tags.includes('Eggs'))).toBe(true);
+    expect(eggs.some((recipe) => recipe.id === 'starter-recipe:orange-tofu-fried-rice')).toBe(false);
+
+    const lentils = filterAndSortRecipes(STARTER_RECIPES, { proteins: ['Lentils'] });
+    expect(lentils.some((recipe) => recipe.id === 'starter-recipe:scout-dal-tadka-rice')).toBe(true);
+    expect(lentils.some((recipe) => recipe.id === 'starter-recipe:scout-lentil-baked-ziti')).toBe(true);
+    expect(cheese.some((recipe) => recipe.id === 'starter-recipe:scout-lentil-baked-ziti')).toBe(false);
+    expect(beans.some((recipe) => recipe.id === 'starter-recipe:scout-hummus-pasta')).toBe(true);
+    expect(filterAndSortRecipes(STARTER_RECIPES, { proteins: ['Greek yogurt'] }).some((recipe) => recipe.id === 'starter-recipe:scout-dal-tadka-rice')).toBe(false);
+
+    const filters = ['Paneer', 'Tofu', 'Beans', 'Lentils', 'Eggs', 'Tempeh', 'Seitan', 'Cheese', 'Edamame', 'Greek yogurt', 'Green peas'];
+    const covered = new Set(filters.flatMap((protein) => filterAndSortRecipes(STARTER_RECIPES, { proteins: [protein] }).map((recipe) => recipe.id)));
+    expect(STARTER_RECIPES.every((recipe) => covered.has(recipe.id))).toBe(true);
+  });
+
   it('supports the umbrella protein filters shown in the recipe browser', () => {
     for (const protein of ['Beans', 'Lentils', 'Cheese']) {
       expect(filterAndSortRecipes(STARTER_RECIPES, { proteins: [protein] }).length, protein).toBeGreaterThan(0);

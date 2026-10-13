@@ -162,6 +162,26 @@ describe('substantial meal catalog', () => {
     expect(new Set(STARTER_RECIPES.map((recipe) => recipe.tags[2])).size).toBeGreaterThanOrEqual(8);
   });
 
+  it('treats legume amounts as cooked weight and requires a real boil for dry kidney beans', () => {
+    const legumeIds = ['starter:chickpeas', 'starter:black-beans', 'starter:kidney-beans', 'starter:pinto-beans', 'starter:lentils', 'starter:red-lentils', 'starter:chana-dal', 'starter:urad-dal'];
+    const legumeRecipes = STARTER_RECIPES.filter((recipe) => recipe.ingredients.some((item) => legumeIds.includes(item.productId ?? '')));
+    expect(legumeRecipes.length).toBeGreaterThan(0);
+    for (const recipe of legumeRecipes) {
+      const method = recipe.steps.join(' ');
+      expect(method, recipe.title).toMatch(/cooked, drained weight/);
+      expect(method, recipe.title).toMatch(/dry weight/);
+      expect(method, recipe.title).not.toMatch(/already cooked and only need to be heated through/);
+    }
+    const kidney = STARTER_RECIPES.filter((recipe) => recipe.ingredients.some((item) => item.productId === 'starter:kidney-beans'));
+    expect(kidney.length).toBeGreaterThan(0);
+    for (const recipe of kidney) {
+      expect(recipe.steps.join(' '), recipe.title).toMatch(/at least 10 minutes/);
+    }
+    const paneer = STARTER_PRODUCTS.find((product) => product.id === 'starter:paneer');
+    expect(paneer?.nutritionPerServing.calories).toBe(299);
+    expect(paneer?.provenance.warnings.some((warning) => warning.includes('not interchangeable'))).toBe(true);
+  });
+
   it('provides complete source macros and a grocery guide for every tracked product', () => {
     expect(STARTER_PRODUCTS).toHaveLength(62);
     for (const product of STARTER_PRODUCTS) {

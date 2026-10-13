@@ -6,7 +6,7 @@ import { kcalWithinTolerance, nutritionForGrams, perServing, proteinMeetsFloor, 
 import { PLANNER_RECIPES, plannerRecipeById } from '../src/planner/recipes';
 import { encodeWeekPlan, parseWeekPlan, readWeekPlan, serializeWeekPlan } from '../src/planner/storage';
 import { MEAL_SLOTS, recipeSlot } from '../src/planner/types';
-import { dayLedger, defaultWeekPlan, formatDayLabel, replaceSlot, resolveMeal, weekGrocery, weekHeading } from '../src/planner/week';
+import { dayLedger, defaultWeekPlan, estimatedLoggedCalories, formatDayLabel, replaceSlot, resolveMeal, sumLedgers, weekGrocery, weekHeading, weekLedgers } from '../src/planner/week';
 import { parseRecipe } from '../src/store';
 
 function recipeText(recipe: (typeof PLANNER_RECIPES)[number]): string {
@@ -146,5 +146,12 @@ describe('weekly planner', () => {
     const garlic = weekGrocery(mixed).find((line) => line.name === 'Garlic');
     expect(garlic?.amountLabel.includes('this week')).toBe(false);
     expect(garlic?.amountLabel).toContain('+');
+    expect(garlic?.sourceNote).toContain('same snapshot as the recipe library');
+    expect(garlic?.sourceNote).toContain('Typical USDA value per 100 g');
+
+    const estimated = estimatedLoggedCalories(defaultWeekPlan());
+    const logged = sumLedgers(weekLedgers(defaultWeekPlan())).calories;
+    expect(estimated).toBeGreaterThan(0);
+    expect(estimated).toBeLessThan(logged);
   });
 });

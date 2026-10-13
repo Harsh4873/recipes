@@ -92,13 +92,28 @@ function compareRecipes(sort: RecipeSort): (left: Recipe, right: Recipe) => numb
   );
 }
 
+const MAIN_PROTEIN_TAGS = new Set([
+  'tofu', 'paneer', 'tempeh', 'seitan', 'eggs', 'greek yogurt', 'cottage cheese',
+  'cheddar', 'mozzarella', 'edamame', 'chickpeas', 'black beans', 'kidney beans',
+  'pinto beans', 'lentils', 'brown lentils', 'red lentils', 'chana dal', 'urad dal',
+  'green peas', 'hummus',
+]);
+
+export function recipeMainProtein(recipe: Recipe): string | undefined {
+  const tag = recipe.tags.find((value) => MAIN_PROTEIN_TAGS.has(normalized(value)));
+  return tag ? normalized(tag) : undefined;
+}
+
 function proteinFamilyMatches(family: string, filter: string): boolean {
   if (family === filter) return true;
   if (filter === 'beans') return family === 'black beans'
     || family === 'kidney beans'
     || family === 'pinto beans'
-    || family === 'chickpeas';
-  if (filter === 'lentils') return family === 'red lentils'
+    || family === 'chickpeas'
+    || family === 'hummus';
+  if (filter === 'lentils') return family === 'lentils'
+    || family === 'brown lentils'
+    || family === 'red lentils'
     || family === 'chana dal'
     || family === 'urad dal';
   if (filter === 'cheese') return family === 'cheddar'
@@ -127,10 +142,8 @@ export function filterAndSortRecipes(
     ].join(' '));
     if (!queryTokens.every((token) => haystack.includes(token))) return false;
     if (cuisines.size > 0 && !cuisines.has(normalized(recipe.cuisine))) return false;
-    const families = recipeProteinFamilies(recipe).map(normalized);
-    if (proteins.size > 0 && !families.some((family) => (
-      [...proteins].some((protein) => proteinFamilyMatches(family, protein))
-    ))) return false;
+    const mainProtein = recipeMainProtein(recipe);
+    if (proteins.size > 0 && (!mainProtein || ![...proteins].some((protein) => proteinFamilyMatches(mainProtein, protein)))) return false;
     if (maxMinutes !== undefined && recipe.prepMinutes + recipe.cookMinutes > maxMinutes) return false;
     if (!inCalorieBand(recipe, options.calorieBand)) return false;
     if (minProteinG !== undefined && recipe.nutritionPerServing.proteinG < minProteinG) return false;
