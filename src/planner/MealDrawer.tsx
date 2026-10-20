@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { STARTER_RECIPES } from '../catalog';
 import { containsBlockedDietTerm } from '../diet';
+import { walmartUrlForIngredientName } from './ingredients';
 import { PLANNER_RECIPES } from './recipes';
 import { MEAL_SLOT_LABELS, type MealSlotId } from './types';
 import type { ResolvedMeal } from './week';
@@ -204,7 +205,9 @@ function MealBody({ meal, suggestion }: { meal: ResolvedMeal; suggestion: boolea
       </div>
       <h3>Ingredients</h3>
       <ul className="planner-ingredients">
-        {meal.ingredients.map((ingredient) => (
+        {meal.ingredients.map((ingredient) => {
+          const buyHref = ingredient.walmartUrl ?? walmartUrlForIngredientName(ingredient.name);
+          return (
           <li key={`${ingredient.name}-${ingredient.amountLabel}`}>
             <div>
               <strong>{ingredient.name}</strong>
@@ -213,10 +216,12 @@ function MealBody({ meal, suggestion }: { meal: ResolvedMeal; suggestion: boolea
             <p>
               {ingredient.sourceLabel}
               {ingredient.sourceUrl && <> · <a href={ingredient.sourceUrl} target="_blank" rel="noreferrer">source</a></>}
+              {buyHref && <> · <a href={buyHref} target="_blank" rel="noreferrer">buy</a></>}
             </p>
             <p>{ingredient.sourceNote}</p>
           </li>
-        ))}
+          );
+        })}
       </ul>
       <h3>Steps</h3>
       <ol className="method-list">
