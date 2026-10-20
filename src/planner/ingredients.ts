@@ -9,6 +9,8 @@ export interface IngredientRecord {
   readonly sourceLabel: string;
   readonly sourceUrl?: string;
   readonly sourceNote: string;
+  /** Retailer buy link from curated handoff data. Keep this separate from nutrition sourceUrl. */
+  readonly walmartUrl?: string;
 }
 
 const USDA = 'https://fdc.nal.usda.gov/';
@@ -25,6 +27,10 @@ function ingredient(input: IngredientRecord): IngredientRecord {
 }
 
 const missingMicros = 'Saturated fat, sugar, and sodium were not in the cited label excerpt and are stored as 0.';
+const missingSugar = 'Sugar was not listed in the cited source and is stored as 0.';
+const missingPaneerCarbs = 'Carbohydrate, fiber, and sugar were not in the cited label excerpt and are stored as 0.';
+const missingIsopureMicros = 'Saturated fat and fiber were not in the cited label excerpt and are stored as 0.';
+const yogurtGelatinNote = 'Check the Great Value yogurt label for gelatin.';
 
 export const INGREDIENTS: readonly IngredientRecord[] = Object.freeze([
   ingredient({
@@ -65,6 +71,7 @@ export const INGREDIENTS: readonly IngredientRecord[] = Object.freeze([
     estimated: true,
     sourceLabel: 'Daring label and USDA FDC 2607487',
     sourceUrl: 'https://daring.com/products/',
+    walmartUrl: 'https://www.walmart.com/browse/daring/YnJhbmQ6RGFyaW5n',
     sourceNote: `70 g (2.5 oz) is 90 kcal, 14 g protein, 5 g carbohydrate, 2 g fat, 5 g fiber. An 8 oz bag is about 3.2 servings. USDA FDC 2607487. ${missingMicros}`,
   }),
   ingredient({
@@ -346,6 +353,206 @@ export const INGREDIENTS: readonly IngredientRecord[] = Object.freeze([
     sourceLabel: 'Typical whole-wheat roti',
     sourceNote: 'One cooked whole-wheat roti, about 40 g. Verify against the bread you use.',
   }),
+  ingredient({
+    id: 'daring-original',
+    name: 'Daring Original plant-based pieces',
+    referenceGrams: 70,
+    nutrition: nutrition({ calories: 90, proteinG: 14, carbsG: 5, fatG: 2, saturatedFatG: 0, fiberG: 5, sugarG: 0, sodiumMg: 400 }),
+    estimated: true,
+    sourceLabel: 'Daring label',
+    sourceUrl: 'https://daring.com/products/',
+    walmartUrl: 'https://www.walmart.com/browse/daring/YnJhbmQ6RGFyaW5n',
+    sourceNote: '70 g (2.5 oz) is 90 kcal, 14 g protein, 5 g carbohydrate, 2 g fat, 0 g saturated fat, 5 g fiber, 0 g sugar, and 400 mg sodium. An 8 oz bag is 227 g.',
+  }),
+  ingredient({
+    id: 'gopi-paneer',
+    name: 'Gopi paneer',
+    referenceGrams: 28,
+    nutrition: nutrition({ calories: 90, proteinG: 6, carbsG: 0, fatG: 7, saturatedFatG: 4.5, fiberG: 0, sugarG: 0, sodiumMg: 5 }),
+    estimated: true,
+    sourceLabel: 'Gopi paneer label',
+    sourceUrl: 'https://www.karouncheese.com/product/indian-style-paneer-8-oz/1171',
+    walmartUrl: 'https://www.walmart.com/c/kp/paneer',
+    sourceNote: `28 g is 90 kcal, 6 g protein, 7 g fat, 4.5 g saturated fat, and 5 mg sodium. Gopi paneer is acid-set, so it does not use animal rennet. ${missingPaneerCarbs}`,
+  }),
+  ingredient({
+    id: 'gv-chopped-spinach',
+    name: 'Great Value frozen chopped spinach',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 29, proteinG: 3.63, carbsG: 4.21, fatG: 0.57, saturatedFatG: 0.04, fiberG: 2.9, sugarG: 0.65, sodiumMg: 74 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 169287',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Chopped-Spinach-12-oz-Frozen/431513547',
+    sourceNote: 'Frozen chopped spinach using USDA FDC 169287 per 100 g: 29 kcal, 3.63 g protein, 4.21 g carbohydrate, 0.57 g fat, 0.04 g saturated fat, 2.9 g fiber, 0.65 g sugar, and 74 mg sodium. Verify against the Great Value package.',
+  }),
+  ingredient({
+    id: 'fresh-onion',
+    name: 'Onion',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 40, proteinG: 1.1, carbsG: 9.34, fatG: 0.1, saturatedFatG: 0.04, fiberG: 1.7, sugarG: 4.24, sodiumMg: 4 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170000',
+    sourceUrl: USDA,
+    sourceNote: 'Raw onion using USDA FDC 170000 per 100 g. This planner row is separate from the recipe-library onion snapshot.',
+  }),
+  ingredient({
+    id: 'gv-crushed-tomatoes',
+    name: 'Great Value crushed tomatoes',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 32, proteinG: 1.64, carbsG: 7.29, fatG: 0.28, saturatedFatG: 0.04, fiberG: 1.9, sugarG: 0, sodiumMg: 186 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170501',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Crushed-Tomatoes-with-Tomato-Puree-28-oz/10415230',
+    sourceNote: `Canned crushed tomatoes using USDA FDC 170501 per 100 g. Verify against the Great Value package. ${missingSugar}`,
+  }),
+  ingredient({
+    id: 'fresh-garlic',
+    name: 'Garlic',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 149, proteinG: 6.36, carbsG: 33.1, fatG: 0.5, saturatedFatG: 0.09, fiberG: 2.1, sugarG: 1.0, sodiumMg: 17 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 169230',
+    sourceUrl: USDA,
+    sourceNote: 'Raw garlic using USDA FDC 169230 per 100 g. This planner row is separate from the recipe-library garlic snapshot.',
+  }),
+  ingredient({
+    id: 'fresh-ginger',
+    name: 'Ginger',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 80, proteinG: 1.82, carbsG: 17.8, fatG: 0.75, saturatedFatG: 0.2, fiberG: 2.0, sugarG: 1.7, sodiumMg: 13 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 169231',
+    sourceUrl: USDA,
+    sourceNote: 'Raw ginger using USDA FDC 169231 per 100 g.',
+  }),
+  ingredient({
+    id: 'canola-oil',
+    name: 'Canola oil',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 884, proteinG: 0, carbsG: 0, fatG: 100, saturatedFatG: 7.36, fiberG: 0, sugarG: 0, sodiumMg: 0 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 172336',
+    sourceUrl: USDA,
+    sourceNote: 'Canola oil using USDA FDC 172336 per 100 g.',
+  }),
+  ingredient({
+    id: 'gv-nonfat-greek',
+    name: 'Great Value nonfat Greek yogurt',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 54, proteinG: 9.53, carbsG: 3.43, fatG: 0.24, saturatedFatG: 0.15, fiberG: 0.2, sugarG: 0, sodiumMg: 37 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 171312',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Greek-Plain-Nonfat-Yogurt-32-oz-Tub/26559565',
+    sourceNote: `Plain nonfat Greek yogurt using USDA FDC 171312 per 100 g. Verify against the Great Value package. ${missingSugar} ${yogurtGelatinNote}`,
+  }),
+  ingredient({
+    id: 'red-bell-pepper',
+    name: 'Red bell pepper',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 26, proteinG: 0.99, carbsG: 6.03, fatG: 0.3, saturatedFatG: 0.06, fiberG: 2.1, sugarG: 4.2, sodiumMg: 4 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170108',
+    sourceUrl: USDA,
+    sourceNote: 'Raw red bell pepper using USDA FDC 170108 per 100 g.',
+  }),
+  ingredient({
+    id: 'gv-cauliflower',
+    name: 'Great Value frozen cauliflower',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 24, proteinG: 2.01, carbsG: 4.68, fatG: 0.27, saturatedFatG: 0.04, fiberG: 2.3, sugarG: 2.22, sodiumMg: 24 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170398',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Cauliflower-12-oz-Bag-Frozen/242699420',
+    sourceNote: 'Frozen cauliflower using USDA FDC 170398 per 100 g. Verify against the Great Value package.',
+  }),
+  ingredient({
+    id: 'tomato-paste',
+    name: 'Tomato paste',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 82, proteinG: 4.32, carbsG: 18.9, fatG: 0.47, saturatedFatG: 0.1, fiberG: 4.1, sugarG: 0, sodiumMg: 59 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170459',
+    sourceUrl: USDA,
+    sourceNote: `Tomato paste using USDA FDC 170459 per 100 g. ${missingSugar}`,
+  }),
+  ingredient({
+    id: 'gv-sweet-peas',
+    name: 'Great Value frozen sweet peas',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 77, proteinG: 5.22, carbsG: 13.6, fatG: 0.4, saturatedFatG: 0.07, fiberG: 4.5, sugarG: 0, sodiumMg: 108 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170016',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Frozen-Sweet-Peas-12-oz-Steamable-Bag/443429457',
+    sourceNote: `Frozen peas using USDA FDC 170016 per 100 g. Verify against the Great Value package. ${missingSugar}`,
+  }),
+  ingredient({
+    id: 'milk-1-percent',
+    name: '1% milk',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 42, proteinG: 3.37, carbsG: 4.99, fatG: 0.97, saturatedFatG: 0.63, fiberG: 0, sugarG: 5.2, sodiumMg: 44 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170872',
+    sourceUrl: USDA,
+    sourceNote: '1% milk using USDA FDC 170872 per 100 g.',
+  }),
+  ingredient({
+    id: 'gv-riced-cauliflower',
+    name: 'Great Value frozen riced cauliflower',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 24, proteinG: 2.01, carbsG: 4.68, fatG: 0.27, saturatedFatG: 0.04, fiberG: 2.3, sugarG: 2.22, sodiumMg: 24 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170398',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.instacart.com/store/walmart/products/22380580-great-value-riced-cauliflower-12-oz',
+    sourceNote: 'Frozen riced cauliflower using USDA FDC 170398 per 100 g, the same cauliflower snapshot as the florets bag. Verify against the Great Value package.',
+  }),
+  ingredient({
+    id: 'chia-seeds',
+    name: 'Chia seeds',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 486, proteinG: 16.5, carbsG: 42.1, fatG: 30.7, saturatedFatG: 3.33, fiberG: 34.4, sugarG: 0, sodiumMg: 16 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 170554',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Organic-Chia-Seeds-32-oz-907g-USDA-Organic-Gluten-Free-No-Nuts-Soy-Dairy/862748103',
+    sourceNote: `Chia seeds using USDA FDC 170554 per 100 g. ${missingSugar}`,
+  }),
+  ingredient({
+    id: 'ground-flax',
+    name: 'Ground flaxseed',
+    referenceGrams: 100,
+    nutrition: nutrition({ calories: 534, proteinG: 18.3, carbsG: 28.9, fatG: 42.2, saturatedFatG: 3.66, fiberG: 27.3, sugarG: 1.55, sodiumMg: 30 }),
+    estimated: true,
+    sourceLabel: 'USDA FDC 169414',
+    sourceUrl: USDA,
+    walmartUrl: 'https://www.walmart.com/ip/Great-Value-Organic-Ground-Cold-Milled-Flax-Seed-16-oz-453g-USDA-Certified-Allergen-Free/52633655',
+    sourceNote: 'Ground flaxseed using USDA FDC 169414 per 100 g.',
+  }),
+  ingredient({
+    id: 'mootopia-chocolate',
+    name: 'H-E-B Mootopia chocolate 2% milk',
+    referenceGrams: 240,
+    nutrition: nutrition({ calories: 140, proteinG: 13, carbsG: 13, fatG: 4.5, saturatedFatG: 3, fiberG: 0, sugarG: 11, sodiumMg: 240 }),
+    estimated: true,
+    sourceLabel: 'H-E-B Mootopia chocolate label',
+    sourceUrl: 'https://www.heb.com/product-detail/h-e-b-mootopia-lactose-free-2-reduced-fat-chocolate-milk/730555',
+    sourceNote: '1 cup (240 mL) is 140 kcal, 13 g protein, 13 g carbohydrate, 4.5 g fat, 3 g saturated fat, 0 g fiber, 11 g sugar, and 240 mg sodium. Verify against the carton.',
+  }),
+  ingredient({
+    id: 'isopure-unflavored',
+    name: 'Isopure Zero Carb unflavored whey isolate',
+    referenceGrams: 29,
+    nutrition: nutrition({ calories: 100, proteinG: 25, carbsG: 0, fatG: 0, saturatedFatG: 0, fiberG: 0, sugarG: 0, sodiumMg: 160 }),
+    estimated: true,
+    sourceLabel: 'Isopure Zero Carb unflavored label',
+    sourceUrl: 'https://www.theisopurecompany.com/products/unflavored-protein-powder',
+    sourceNote: `1 scoop (29 g) is 100 kcal, 25 g protein, 0 g carbohydrate, 0 g fat, 0 g sugar, and 160 mg sodium. ${missingIsopureMicros}`,
+  }),
 ]);
 
 const byId = new Map(INGREDIENTS.map((item) => [item.id, item]));
@@ -354,4 +561,12 @@ export function ingredientById(id: string): IngredientRecord {
   const found = byId.get(id);
   if (!found) throw new Error(`Unknown planner ingredient: ${id}`);
   return found;
+}
+
+export function walmartUrlForIngredientName(name: string): string | undefined {
+  const needle = name.trim().toLowerCase();
+  for (const item of INGREDIENTS) {
+    if (item.name.toLowerCase() === needle && item.walmartUrl) return item.walmartUrl;
+  }
+  return undefined;
 }

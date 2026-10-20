@@ -63,6 +63,7 @@ export interface ResolvedIngredient {
   readonly sourceLabel: string;
   readonly sourceUrl?: string;
   readonly sourceNote: string;
+  readonly walmartUrl?: string;
 }
 
 export interface ResolvedMeal {
@@ -106,6 +107,7 @@ function fromPlannerIngredient(ingredient: PlannerIngredient): ResolvedIngredien
     sourceLabel: ingredient.sourceLabel,
     ...(ingredient.sourceUrl ? { sourceUrl: ingredient.sourceUrl } : {}),
     sourceNote: ingredient.sourceNote,
+    ...(ingredient.walmartUrl ? { walmartUrl: ingredient.walmartUrl } : {}),
   };
 }
 
@@ -220,10 +222,11 @@ export interface GroceryLine {
   readonly estimated: boolean;
   readonly sourceLabel: string;
   readonly sourceNote: string;
+  readonly walmartUrl?: string;
 }
 
 export function weekGrocery(plan: WeekPlan): GroceryLine[] {
-  const grouped = new Map<string, { name: string; labels: string[]; grams: number; weighed: boolean; estimated: boolean; sourceLabels: string[]; sourceNotes: string[] }>();
+  const grouped = new Map<string, { name: string; labels: string[]; grams: number; weighed: boolean; estimated: boolean; sourceLabels: string[]; sourceNotes: string[]; walmartUrl?: string }>();
   for (const dayPlan of plan.days) {
     for (const slotId of MEAL_SLOTS) {
       const slot = dayPlan.slots[slotId];
@@ -248,6 +251,7 @@ export function weekGrocery(plan: WeekPlan): GroceryLine[] {
         current.estimated = current.estimated || ingredient.estimated;
         if (ingredient.sourceLabel && !current.sourceLabels.includes(ingredient.sourceLabel)) current.sourceLabels.push(ingredient.sourceLabel);
         if (ingredient.sourceNote && !current.sourceNotes.includes(ingredient.sourceNote)) current.sourceNotes.push(ingredient.sourceNote);
+        if (ingredient.walmartUrl && !current.walmartUrl) current.walmartUrl = ingredient.walmartUrl;
         grouped.set(key, current);
       }
     }
@@ -260,6 +264,7 @@ export function weekGrocery(plan: WeekPlan): GroceryLine[] {
       estimated: item.estimated,
       sourceLabel: item.sourceLabels.join('; '),
       sourceNote: item.sourceNotes.join(' '),
+      ...(item.walmartUrl ? { walmartUrl: item.walmartUrl } : {}),
     }))
     .sort((left, right) => left.name.localeCompare(right.name));
 }

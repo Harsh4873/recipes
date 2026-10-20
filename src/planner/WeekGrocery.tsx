@@ -1,4 +1,5 @@
 import { ShoppingBasket } from 'lucide-react';
+import { BuyLink } from './BuyLink';
 import { weekGrocery, type GroceryLine } from './week';
 import type { WeekPlan } from './types';
 
@@ -27,6 +28,7 @@ export function WeekGrocery({
                 <summary>{line.sourceLabel}</summary>
                 <p>{line.sourceNote}</p>
               </details>
+              <BuyLink href={line.walmartUrl} />
             </div>
           </article>
         ))}

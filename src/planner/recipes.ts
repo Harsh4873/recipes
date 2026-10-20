@@ -13,6 +13,7 @@ export interface PlannerIngredient {
   readonly sourceLabel: string;
   readonly sourceUrl?: string;
   readonly sourceNote: string;
+  readonly walmartUrl?: string;
 }
 
 export interface PlannerRecipe {
@@ -45,6 +46,7 @@ interface RecipeInput {
   readonly prepMinutes: number;
   readonly cookMinutes: number;
   readonly servings?: number;
+  readonly estimated?: boolean;
   readonly lines: readonly LineInput[];
   readonly steps: readonly string[];
 }
@@ -62,6 +64,7 @@ function lineFrom(input: LineInput, index: number): PlannerIngredient {
     sourceLabel: record.sourceLabel,
     ...(record.sourceUrl ? { sourceUrl: record.sourceUrl } : {}),
     sourceNote: record.sourceNote,
+    ...(record.walmartUrl ? { walmartUrl: record.walmartUrl } : {}),
   };
 }
 
@@ -80,7 +83,7 @@ export function buildPlannerRecipe(input: RecipeInput): PlannerRecipe {
     ingredients,
     steps: input.steps,
     nutritionPerServing: perServing(sumNutrition(ingredients.map((item) => item.nutrition)), servings),
-    estimated: ingredients.some((item) => item.estimated),
+    estimated: input.estimated ?? ingredients.some((item) => item.estimated),
   };
 }
 
@@ -546,6 +549,169 @@ export const PLANNER_RECIPES: readonly PlannerRecipe[] = Object.freeze([
       'Stir 16 g honey into 160 g plain Greek yogurt and 180 g cottage cheese.',
       'Steam 70 g Great Value mixed vegetables.',
       'Eat the toast with the dairy bowl and the vegetables.',
+    ],
+  }),
+  buildPlannerRecipe({
+    id: 'plan:palak-paneer-daring',
+    title: 'Palak Paneer with Daring',
+    description: 'Blended spinach gravy with half Gopi paneer and half Daring, finished with nonfat Greek yogurt instead of cream. Estimated from labels and USDA FDC snapshots. Check the yogurt label for gelatin. Basmati or phulka on the side is not in these macros.',
+    cuisine: 'Indian',
+    tags: ['lunch', 'paneer', 'Daring', 'blender', 'meal-prep'],
+    prepMinutes: 20,
+    cookMinutes: 30,
+    servings: 4,
+    estimated: true,
+    lines: [
+      L('gv-chopped-spinach', 680, '680 g / 2 x 12 oz bags Great Value frozen chopped spinach'),
+      L('gopi-paneer', 113, '113 g / 1/2 pack Gopi paneer'),
+      L('daring-original', 227, '227 g / 1 bag Daring Original'),
+      L('fresh-onion', 150, '150 g / 1 large onion'),
+      L('gv-crushed-tomatoes', 121, '121 g / 1/2 cup Great Value crushed tomatoes'),
+      L('fresh-garlic', 12, '12 g / 4 cloves garlic'),
+      L('fresh-ginger', 10, '10 g / 1-inch piece ginger'),
+      L('canola-oil', 9, '9 g / 2 tsp canola oil'),
+      L('gv-nonfat-greek', 120, '120 g / about 1/2 cup Great Value nonfat Greek yogurt'),
+    ],
+    steps: [
+      'Thaw 680 g Great Value frozen chopped spinach. Blend it with 1/4 cup water and 1 green chili until smooth.',
+      'Sear 227 g Daring Original plant-based pieces until browned. Cube 113 g Gopi paneer.',
+      'Heat 9 g canola oil, add 1 tsp cumin seed, then cook 150 g onion 6-7 minutes. Add 12 g garlic and 10 g ginger for 1 minute.',
+      'Add 121 g Great Value crushed tomatoes, 1/2 tsp turmeric, 1 tsp coriander, 1/2 tsp Kashmiri chili, and 3/4 tsp salt. Cook 5 minutes.',
+      'Stir in the spinach puree and 1/4 cup water. Simmer 5 minutes.',
+      'Take the pan off the heat for about 1 minute, then stir in 120 g whisked Great Value nonfat Greek yogurt so it does not curdle. Check the yogurt label for gelatin.',
+      'Add the paneer, Daring, 1 tsp garam masala, and 1 tsp kasuri methi. Warm 3-4 minutes without boiling. Spices, cilantro, salt, and chili are not counted in the macros.',
+    ],
+  }),
+  buildPlannerRecipe({
+    id: 'plan:daring-tikka-veg',
+    title: 'Daring Tikka Masala with Peppers, Cauliflower, and Peas',
+    description: 'Chunky tikka masala with Daring, peppers, cauliflower, and peas in a tomato-yogurt sauce. Uses canola oil, not coconut oil. Estimated from labels and USDA FDC snapshots. Check the yogurt label for gelatin. Basmati or phulka on the side is not in these macros.',
+    cuisine: 'Indian',
+    tags: ['lunch', 'Daring', 'tikka', 'meal-prep'],
+    prepMinutes: 20,
+    cookMinutes: 30,
+    servings: 4,
+    estimated: true,
+    lines: [
+      L('daring-original', 454, '454 g / 2 bags Daring Original'),
+      L('gv-nonfat-greek', 85, '85 g / 5 Tbsp Great Value nonfat Greek yogurt for the marinade'),
+      L('fresh-ginger', 12, '12 g / 2 Tbsp minced ginger'),
+      L('fresh-garlic', 15, '15 g / about 5 cloves garlic'),
+      L('canola-oil', 14, '14 g / 1 Tbsp canola oil'),
+      L('red-bell-pepper', 164, '164 g / 1 large red bell pepper'),
+      L('gv-cauliflower', 340, '340 g / 12 oz bag Great Value frozen cauliflower'),
+      L('fresh-onion', 55, '55 g / 1/2 medium onion'),
+      L('tomato-paste', 16, '16 g / 1 Tbsp tomato paste'),
+      L('gv-crushed-tomatoes', 794, '794 g / 1 x 28 oz can Great Value crushed tomatoes'),
+      L('gv-sweet-peas', 283, '283 g / 10 oz Great Value frozen sweet peas'),
+      L('gv-nonfat-greek', 113, '113 g / 1/2 cup Great Value nonfat Greek yogurt to finish'),
+    ],
+    steps: [
+      'Marinate 454 g thawed Daring Original with 12 g ginger, 15 g garlic, 1 tsp coriander, garam masala, 1 tsp cumin, salt, and 85 g Great Value nonfat Greek yogurt for 20 minutes or overnight.',
+      'Bake the Daring at 400 F for 12-15 minutes, or air-fry at 400 F for 8 minutes.',
+      'In 14 g canola oil over medium-low heat, cook 164 g red bell pepper, 340 g Great Value frozen cauliflower, 55 g onion, ginger, garlic, salt, and pepper 12-15 minutes. Do not use coconut oil.',
+      'Add 16 g tomato paste, garam masala, 1 1/2 tsp turmeric, and 1/8 tsp cayenne. Stir 30 seconds.',
+      'Add 794 g Great Value crushed tomatoes and cook 2 minutes. Add the Daring and 283 g Great Value frozen sweet peas. Cook 2 minutes.',
+      'Take the pan off the heat for about 1 minute, then stir in 113 g Great Value nonfat Greek yogurt so it does not curdle. Check the yogurt label for gelatin. Top with 1/4 cup cilantro. Spices and cilantro are not counted in the macros. Optional: blend the sauce smooth and keep the vegetables chunky.',
+    ],
+  }),
+  buildPlannerRecipe({
+    id: 'plan:daring-tikka-smooth',
+    title: 'Smooth Daring Tikka with Riced Cauliflower',
+    description: 'Smooth tikka sauce made with 1% milk, nonfat Greek yogurt, and blended riced cauliflower, with seared Daring. Uses canola oil. Estimated from labels and USDA FDC snapshots. Check the yogurt label for gelatin. Basmati or phulka on the side is not in these macros.',
+    cuisine: 'Indian',
+    tags: ['lunch', 'Daring', 'tikka', 'blender'],
+    prepMinutes: 5,
+    cookMinutes: 30,
+    servings: 4,
+    estimated: true,
+    lines: [
+      L('canola-oil', 9, '9 g / 2 tsp canola oil'),
+      L('fresh-onion', 70, '70 g / 1 small onion'),
+      L('fresh-ginger', 6, '6 g / 1 Tbsp grated ginger'),
+      L('fresh-garlic', 9, '9 g / 3 cloves garlic'),
+      L('gv-crushed-tomatoes', 363, '363 g / 1 1/2 cups Great Value crushed tomatoes'),
+      L('milk-1-percent', 122, '122 g / 1/2 cup 1% milk'),
+      L('gv-nonfat-greek', 170, '170 g / 3/4 cup Great Value nonfat Greek yogurt'),
+      L('daring-original', 454, '454 g / 2 bags Daring Original'),
+      L('gv-riced-cauliflower', 340, '340 g / 12 oz bag Great Value frozen riced cauliflower'),
+    ],
+    steps: [
+      'Sear 454 g Daring Original plant-based pieces and set them aside.',
+      'Cook 70 g onion in 9 g canola oil for 3 minutes. Add 6 g ginger for 1 minute, then 9 g garlic for 1 minute.',
+      'Add 1 Tbsp cumin, 1 Tbsp garam masala, 1 tsp turmeric, 1/2 Tbsp chili powder, and 1/2 tsp salt. Stir 2 minutes. Spices are not counted in the macros.',
+      'Add 363 g Great Value crushed tomatoes, 122 g 1% milk, and 340 g Great Value frozen riced cauliflower. Simmer 10 minutes.',
+      'Blend the sauce smooth.',
+      'Take the pan off the heat for about 1 minute. Temper 170 g Great Value nonfat Greek yogurt with a ladle of sauce, then stir it in so it does not curdle. Check the yogurt label for gelatin.',
+      'Add the seared Daring, warm through, and top with 4 Tbsp cilantro.',
+    ],
+  }),
+  buildPlannerRecipe({
+    id: 'plan:night-shake',
+    title: 'Night Shake',
+    description: 'Chocolate Mootopia x2.2 with one scoop Isopure Zero Carb unflavored whey isolate. Meant for the Snack 2 slot. Estimated from the cited labels.',
+    cuisine: 'Shake',
+    tags: ['extraSnack', 'snack', 'snack 2', 'shake'],
+    prepMinutes: 5,
+    cookMinutes: 0,
+    servings: 1,
+    estimated: true,
+    lines: [
+      L('mootopia-chocolate', 528, '2.2 cups H-E-B Mootopia chocolate 2% milk (528 g)'),
+      L('isopure-unflavored', 29, '1 scoop Isopure Zero Carb unflavored (29 g)'),
+    ],
+    steps: [
+      'Pour 2.2 cups H-E-B Mootopia chocolate 2% milk (528 g) into a blender.',
+      'Add 1 scoop Isopure Zero Carb unflavored whey isolate (29 g).',
+      'Blend until smooth.',
+      'Drink right away.',
+    ],
+  }),
+  buildPlannerRecipe({
+    id: 'plan:night-shake-cauli-chia-flax',
+    title: 'Night Shake with Cauliflower, Chia, and Flax',
+    description: 'The Snack 2 night shake plus 1 cup riced cauliflower, 1 Tbsp chia, and 1 Tbsp ground flax. Estimated from labels and USDA FDC snapshots.',
+    cuisine: 'Shake',
+    tags: ['extraSnack', 'snack', 'snack 2', 'shake', 'hidden veggies'],
+    prepMinutes: 5,
+    cookMinutes: 0,
+    servings: 1,
+    estimated: true,
+    lines: [
+      L('mootopia-chocolate', 528, '2.2 cups H-E-B Mootopia chocolate 2% milk (528 g)'),
+      L('isopure-unflavored', 29, '1 scoop Isopure Zero Carb unflavored (29 g)'),
+      L('gv-riced-cauliflower', 132, '132 g / 1 cup Great Value frozen riced cauliflower'),
+      L('chia-seeds', 12, '12 g / 1 Tbsp chia seeds'),
+      L('ground-flax', 7, '7 g / 1 Tbsp ground flaxseed'),
+    ],
+    steps: [
+      'Blend 2.2 cups H-E-B Mootopia chocolate 2% milk (528 g), 1 scoop Isopure Zero Carb unflavored (29 g), and 132 g Great Value frozen riced cauliflower first.',
+      'Add 12 g chia seeds and 7 g ground flaxseed.',
+      'Blend 30-60 seconds until smooth.',
+      'Drink right away, or the chia thickens it.',
+    ],
+  }),
+  buildPlannerRecipe({
+    id: 'plan:night-shake-cauli-chia',
+    title: 'Night Shake with Cauliflower and Chia',
+    description: 'The Snack 2 night shake plus 1 cup riced cauliflower and 1 Tbsp chia, without flax. A lower-fat add-in option for the 65 g fat daily cap. Estimated from labels and USDA FDC snapshots.',
+    cuisine: 'Shake',
+    tags: ['extraSnack', 'snack', 'snack 2', 'shake', 'hidden veggies'],
+    prepMinutes: 5,
+    cookMinutes: 0,
+    servings: 1,
+    estimated: true,
+    lines: [
+      L('mootopia-chocolate', 528, '2.2 cups H-E-B Mootopia chocolate 2% milk (528 g)'),
+      L('isopure-unflavored', 29, '1 scoop Isopure Zero Carb unflavored (29 g)'),
+      L('gv-riced-cauliflower', 132, '132 g / 1 cup Great Value frozen riced cauliflower'),
+      L('chia-seeds', 12, '12 g / 1 Tbsp chia seeds'),
+    ],
+    steps: [
+      'Blend 2.2 cups H-E-B Mootopia chocolate 2% milk (528 g), 1 scoop Isopure Zero Carb unflavored (29 g), and 132 g Great Value frozen riced cauliflower first.',
+      'Add 12 g chia seeds.',
+      'Blend 30-60 seconds until smooth.',
+      'Drink right away, or the chia thickens it.',
     ],
   }),
 ]);
